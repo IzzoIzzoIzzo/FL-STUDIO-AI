@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SHADDAI Music Engine</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a2e;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        h1 { color: #64ffda; }
+        button {
+            background: #64ffda;
+            color: #1a1a2e;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            margin: 10px;
+            cursor: pointer;
+            border-radius: 8px;
+        }
+        button:hover { background: #00bcd4; }
+        #output {
+            margin: 20px;
+            padding: 20px;
+            background: #0a0a0f;
+            border-radius: 8px;
+            text-align: left;
+            font-family: monospace;
+            white-space: pre-wrap;
+            min-height: 200px;
+        }
+    </style>
+</head>
+<body>
+    <h1>SHADDAI Music Engine</h1>
+    <p>Motto: "Everything works and is connected!"</p>
+    
+    <button onclick="generateBeat()">Generate Beat</button>
+    <button onclick="playSynth()">Play Synth</button>
+    <button onclick="playDrums()">Play Drums</button>
+    <button onclick="generateSong()">Generate Full Song</button>
+    
+    <div id="output">Click a button to generate music...</div>
+    
+    <script>
+        async function runCommand(cmd) {
+            document.getElementById('output').innerText = "Running...";
+            try {
+                // This won't work in browser - needs server
+                document.getElementById('output').innerText = 
+                    "This requires a server. Open terminal and run:\n\n" +
+                    "cd \"C:\\Users\\Brittany\\OneDrive\\Desktop\\AI FL STUDIO BUILD\"\n" +
+                    "python\n" +
+                    "from flstudio_ai_api import FLStudioAI\n" +
+                    "api = FLStudioAI()\n" +
+                    "api.generate_beat('trap', 4)";
+            } catch(e) {
+                document.getElementById('output').innerText = "Error: " + e;
+            }
+        }
+        
+        function generateBeat() { runCommand('beat'); }
+        function playSynth() { runCommand('synth'); }
+        function playDrums() { runCommand('drums'); }
+        function generateSong() { runCommand('song'); }
+    </script>
+</body>
+</html>

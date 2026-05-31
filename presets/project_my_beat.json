@@ -1,0 +1,33 @@
+{
+  "type": "project",
+  "name": "my_beat",
+  "version": "1.0",
+  "bpm": 128,
+  "key": "Am",
+  "tracks": [
+    {
+      "name": "Drums",
+      "volume": 0.8,
+      "pan": 0
+    },
+    {
+      "name": "Bass",
+      "volume": 0.9,
+      "pan": 0
+    }
+  ],
+  "patterns": {
+    "drums": [
+      1,
+      0,
+      1,
+      0,
+      1,
+      0,
+      1,
+      0
+    ]
+  },
+  "mixer": {},
+  "master": {}
+}

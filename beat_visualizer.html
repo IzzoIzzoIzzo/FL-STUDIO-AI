@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FL Studio AI - Beat Visualizer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: #000;
+            font-family: 'Segoe UI', sans-serif;
+            overflow: hidden;
+        }
+        
+        #visualizer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0,0,0,0.8);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid #333;
+        }
+        
+        .controls h2 {
+            color: #00d4ff;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+        
+        .control-group {
+            margin: 10px 0;
+        }
+        
+        .control-group label {
+            color: #aaa;
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .control-group select, .control-group input {
+            width: 100%;
+            padding: 8px;
+            background: #222;
+            border: 1px solid #444;
+            color: #fff;
+            border-radius: 5px;
+        }
+        
+        .palette-btns {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        
+        .palette-btn {
+            width: 30px;
+            height: 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .palette-btn:hover { transform: scale(1.2); }
+        
+        .info {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            color: #666;
+            font-size: 0.8rem;
+        }
+        
+        .beat-info {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 15px 25px;
+            border-radius: 10px;
+            color: #00d4ff;
+            font-size: 1.1rem;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="visualizer"></canvas>
+    
+    <div class="controls">
+        <h2>🎨 Beat Visualizer</h2>
+        
+        <div class="control-group">
+            <label>Visualization Style</label>
+            <select id="vizStyle" onchange="changeStyle()">
+                <option value="waveform">Waveform</option>
+                <option value="spectrum">Spectrum Bars</option>
+                <option value="circles">Circle Beat</option>
+                <option value="particles">Particles</option>
+                <option value="all">All Combined</option>
+            </select>
+        </div>
+        
+        <div class="control-group">
+            <label>Color Palette</label>
+            <div class="palette-btns">
+                <button class="palette-btn" style="background:#00ffff" onclick="setPalette('neon')"></button>
+                <button class="palette-btn" style="background:#ff6b6b" onclick="setPalette('sunset')"></button>
+                <button class="palette-btn" style="background:#54a0ff" onclick="setPalette('ocean')"></button>
+                <button class="palette-btn" style="background:#10ac84" onclick="setPalette('forest')"></button>
+                <button class="palette-btn" style="background:#ee5a24" onclick="setPalette('fire')"></button>
+                <button class="palette-btn" style="background:#00ff00" onclick="setPalette('matrix')"></button>
+                <button class="palette-btn" style="background:#ff00ff" onclick="setPalette('cyber')"></button>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <label>Animation Speed</label>
+            <input type="range" id="speed" min="0.1" max="3" step="0.1" value="1" onchange="updateSpeed()">
+        </div>
+        
+        <div class="control-group">
+            <label>Intensity</label>
+            <input type="range" id="intensity" min="0.1" max="2" step="0.1" value="1" onchange="updateIntensity()">
+        </div>
+        
+        <button onclick="generateBeat()" style="background:linear-gradient(90deg,#00d4ff,#7b2ff7);border:none;padding:12px 20px;color:#fff;border-radius:8px;cursor:pointer;width:100%;margin-top:15px;font-size:1rem;">
+            🎵 Generate Beat
+        </button>
+    </div>
+    
+    <div class="beat-info" id="beatInfo">Click "Generate Beat" to start!</div>
+    <div class="info">FL Studio AI Beat Visualizer - Works with or without FL Studio!</div>
+    
+    <script>
+        const canvas = document.getElementById('visualizer');
+        const ctx = canvas.getContext('2d');
+        
+        let width, height;
+        let animationId = null;
+        let audioContext = null;
+        let currentStyle = 'waveform';
+        let currentPalette = 'neon';
+        let speed = 1;
+        let intensity = 1;
+        let time = 0;
+        
+        const palettes = {
+            neon: ['#00ffff', '#ff00ff', '#00ff00', '#ffff00'],
+            sunset: ['#ff6b6b', '#feca57', '#ff9ff3', '#54a0ff'],
+            ocean: ['#00d2d3', '#54a0ff', '#5f27cd', '#01a3a4'],
+            forest: ['#10ac84', '#1dd1a1', '#222f3e', '#8395a7'],
+            fire: ['#ee5a24', '#f39c12', '#d35400', '#c0392b'],
+            matrix: ['#00ff00', '#003300', '#00ff00', '#006600'],
+            cyber: ['#ff00ff', '#00ffff', '#ff0066', '#00ff66'],
+            pastel: ['#ffeaa7', '#fab1a0', '#81ecec', '#a29bfe']
+        };
+        
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+        
+        window.addEventListener('resize', resize);
+        resize();
+        
+        function setPalette(name) {
+            currentPalette = name;
+        }
+        
+        function changeStyle() {
+            currentStyle = document.getElementById('vizStyle').value;
+        }
+        
+        function updateSpeed() {
+            speed = parseFloat(document.getElementById('speed').value);
+        }
+        
+        function updateIntensity() {
+            intensity = parseFloat(document.getElementById('intensity').value);
+        }
+        
+        function generateBeat() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            
+            const bpm = [70, 85, 120, 140, 150, 170][Math.floor(Math.random() * 6)];
+            const styles = ['lofi', 'trap', 'house', 'hiphop', 'dubstep', 'dnb'];
+            const style = styles[Math.floor(Math.random() * styles.length)];
+            
+            document.getElementById('beatInfo').textContent = 
+                `${style.toUpperCase()} @ ${bpm} BPM`;
+            
+            playBeat(style, bpm);
+        }
+        
+        function playBeat(style, bpm) {
+            const beatDuration = 60 / bpm;
+            const pattern = getPattern(style);
+            const now = audioContext.currentTime;
+            
+            for (let bar = 0; bar < 4; bar++) {
+                for (let beat = 0; beat < 4; beat++) {
+                    const beatTime = now + (bar * 4 + beat) * beatDuration;
+                    
+                    if (pattern.kick[beat]) playKick(beatTime);
+                    if (pattern.snare[beat]) playSnare(beatTime);
+                    
+                    for (let h = 0; h < 4; h++) {
+                        if (pattern.hihat[(beat * 4 + h) % 8]) {
+                            playHiHat(beatTime + h * beatDuration / 4);
+                        }
+                    }
+                }
+            }
+        }
+        
+        function getPattern(style) {
+            const patterns = {
+                trap: {kick:[1,0,0,1], snare:[0,0,1,0], hihat:[1,1,1,1,1,1,1,1]},
+                house: {kick:[1,0,1,0], snare:[0,0,1,0], hihat:[1,0,1,0,1,0,1,0]},
+                hiphop: {kick:[1,0,0,1], snare:[0,0,1,0], hihat:[1,1,0,1,1,1,0,1]},
+                lofi: {kick:[1,0,0,0], snare:[0,0,1,0], hihat:[1,0,1,0,1,0,1,0]},
+                dubstep: {kick:[1,0,0,0,1,0,0,0], snare:[0,0,1,0,0,0,1,0], hihat:[1,1,1,1,1,1,1,1]},
+                dnb: {kick:[1,0,0,1], snare:[0,0,1,1], hihat:[1,1,1,1,1,1,1,1]},
+            };
+            return patterns[style] || patterns.trap;
+        }
+        
+        function playKick(time) {
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            osc.frequency.setValueAtTime(150, time);
+            osc.frequency.exponentialRampToValueAtTime(40, time + 0.1);
+            gain.gain.setValueAtTime(0.8, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.3);
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+            osc.start(time);
+            osc.stop(time + 0.3);
+        }
+        
+        function playSnare(time) {
+            const noise = audioContext.createBufferSource();
+            const buffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.2, audioContext.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+            noise.buffer = buffer;
+            const gain = audioContext.createGain();
+            gain.gain.setValueAtTime(0.5, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.15);
+            noise.connect(gain);
+            gain.connect(audioContext.destination);
+            noise.start(time);
+        }
+        
+        function playHiHat(time) {
+            const noise = audioContext.createBufferSource();
+            const buffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.05, audioContext.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+            noise.buffer = buffer;
+            const gain = audioContext.createGain();
+            gain.gain.setValueAtTime(0.2, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
+            noise.connect(gain);
+            gain.connect(audioContext.destination);
+            noise.start(time);
+        }
+        
+        // Animation loop
+        function animate() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillRect(0, 0, width, height);
+            
+            time += 0.02 * speed;
+            
+            const colors = palettes[currentPalette];
+            
+            if (currentStyle === 'waveform' || currentStyle === 'all') {
+                drawWaveform(colors);
+            }
+            
+            if (currentStyle === 'spectrum' || currentStyle === 'all') {
+                drawSpectrum(colors);
+            }
+            
+            if (currentStyle === 'circles' || currentStyle === 'all') {
+                drawCircles(colors);
+            }
+            
+            if (currentStyle === 'particles' || currentStyle === 'all') {
+                drawParticles(colors);
+            }
+            
+            animationId = requestAnimationFrame(animate);
+        }
+        
+        function drawWaveform(colors) {
+            ctx.beginPath();
+            ctx.strokeStyle = colors[0];
+            ctx.lineWidth = 2;
+            
+            for (let x = 0; x < width; x++) {
+                const y = height / 2 + Math.sin(x * 0.02 + time) * 50 * intensity;
+                if (x === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            
+            // Add glow
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = colors[0];
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+        
+        function drawSpectrum(colors) {
+            const numBars = 32;
+            const barWidth = width / numBars;
+            
+            for (let i = 0; i < numBars; i++) {
+                const barHeight = Math.random() * height * 0.5 * intensity;
+                const x = i * barWidth;
+                const y = height - barHeight;
+                
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.fillRect(x, y, barWidth - 2, barHeight);
+            }
+        }
+        
+        function drawCircles(colors) {
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const maxRadius = Math.min(width, height) / 3;
+            
+            for (let i = 0; i < 16; i++) {
+                const angle = (i / 16) * Math.PI * 2 + time;
+                const radius = maxRadius * (0.5 + Math.sin(time * 3 + i) * 0.3 * intensity);
+                
+                const x = centerX + Math.cos(angle) * radius;
+                const y = centerY + Math.sin(angle) * radius;
+                
+                ctx.beginPath();
+                ctx.arc(x, y, 5 + Math.sin(time * 5 + i) * 3 * intensity, 0, Math.PI * 2);
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.fill();
+                
+                // Lines to center
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.lineTo(x, y);
+                ctx.strokeStyle = colors[i % colors.length] + '40';
+                ctx.stroke();
+            }
+        }
+        
+        function drawParticles(colors) {
+            for (let i = 0; i < 100; i++) {
+                const x = (Math.sin(time + i * 0.1) * 0.5 + 0.5) * width;
+                const y = (Math.cos(time * 0.7 + i * 0.2) * 0.5 + 0.5) * height;
+                
+                ctx.beginPath();
+                ctx.arc(x, y, 2 + Math.sin(time * 3 + i) * intensity, 0, Math.PI * 2);
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.fill();
+            }
+        }
+        
+        animate();
+    </script>
+</body>
+</html>

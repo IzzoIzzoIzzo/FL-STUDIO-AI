@@ -1,0 +1,239 @@
+{
+  "name": "flstudio-mcp",
+  "version": "1.0.0",
+  "description": "FL Studio MCP for AI-assisted beat making and music production",
+  "host": "localhost",
+  "port": 5000,
+  "protocol": "http",
+  "tools": [
+    {
+      "name": "flstudio_play",
+      "description": "Start FL Studio playback",
+      "endpoint": "/transport/play",
+      "method": "POST"
+    },
+    {
+      "name": "flstudio_stop",
+      "description": "Stop FL Studio playback",
+      "endpoint": "/transport/stop",
+      "method": "POST"
+    },
+    {
+      "name": "flstudio_pause",
+      "description": "Pause FL Studio playback",
+      "endpoint": "/transport/pause",
+      "method": "POST"
+    },
+    {
+      "name": "flstudio_record",
+      "description": "Toggle recording mode",
+      "endpoint": "/transport/record",
+      "method": "POST"
+    },
+    {
+      "name": "flstudio_restart",
+      "description": "Restart playback from beginning",
+      "endpoint": "/transport/restart",
+      "method": "POST"
+    },
+    {
+      "name": "flstudio_set_tempo",
+      "description": "Set project tempo (BPM)",
+      "endpoint": "/tempo",
+      "method": "POST",
+      "parameters": {
+        "bpm": {"type": "integer", "minimum": 30, "maximum": 300, "default": 120}
+      }
+    },
+    {
+      "name": "flstudio_set_position",
+      "description": "Jump to specific bar in arrangement",
+      "endpoint": "/position",
+      "method": "POST",
+      "parameters": {
+        "bar": {"type": "integer", "minimum": 1, "default": 1}
+      }
+    },
+    {
+      "name": "flstudio_volume",
+      "description": "Set mixer channel volume (0.0 to 1.0)",
+      "endpoint": "/mixer/volume",
+      "method": "POST",
+      "parameters": {
+        "channel": {"type": "integer", "minimum": 0, "maximum": 99},
+        "level": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    {
+      "name": "flstudio_pan",
+      "description": "Set mixer channel pan (-1.0 left to 1.0 right)",
+      "endpoint": "/mixer/pan",
+      "method": "POST",
+      "parameters": {
+        "channel": {"type": "integer", "minimum": 0, "maximum": 99},
+        "position": {"type": "number", "minimum": -1, "maximum": 1}
+      }
+    },
+    {
+      "name": "flstudio_mute",
+      "description": "Toggle channel mute",
+      "endpoint": "/mixer/mute",
+      "method": "POST",
+      "parameters": {
+        "channel": {"type": "integer", "minimum": 0, "maximum": 99},
+        "state": {"type": "boolean"}
+      }
+    },
+    {
+      "name": "flstudio_solo",
+      "description": "Toggle channel solo",
+      "endpoint": "/mixer/solo",
+      "method": "POST",
+      "parameters": {
+        "channel": {"type": "integer", "minimum": 0, "maximum": 99},
+        "state": {"type": "boolean"}
+      }
+    },
+    {
+      "name": "flstudio_master_volume",
+      "description": "Set master output volume",
+      "endpoint": "/mixer/master",
+      "method": "POST",
+      "parameters": {
+        "level": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    {
+      "name": "flstudio_select_pattern",
+      "description": "Select pattern in step sequencer",
+      "endpoint": "/pattern/select",
+      "method": "POST",
+      "parameters": {
+        "number": {"type": "integer", "minimum": 1, "maximum": 99}
+      }
+    },
+    {
+      "name": "flstudio_create_pattern",
+      "description": "Create new pattern",
+      "endpoint": "/pattern/create",
+      "method": "POST",
+      "parameters": {
+        "name": {"type": "string"}
+      }
+    },
+    {
+      "name": "flstudio_open_piano_roll",
+      "description": "Open piano roll for channel",
+      "endpoint": "/pianoroll/open",
+      "method": "POST",
+      "parameters": {
+        "channel": {"type": "integer", "minimum": 0}
+      }
+    },
+    {
+      "name": "flstudio_close_piano_roll",
+      "description": "Close piano roll",
+      "endpoint": "/pianoroll/close",
+      "method": "POST"
+    },
+    {
+      "name": "flstudio_add_note",
+      "description": "Add note to piano roll (pitch 0-127, C4=60)",
+      "endpoint": "/pianoroll/note",
+      "method": "POST",
+      "parameters": {
+        "pitch": {"type": "integer", "minimum": 0, "maximum": 127},
+        "start": {"type": "number", "minimum": 0},
+        "duration": {"type": "number", "minimum": 0.25},
+        "velocity": {"type": "integer", "minimum": 0, "maximum": 127, "default": 100}
+      }
+    },
+    {
+      "name": "flstudio_clear_piano_roll",
+      "description": "Clear all notes in piano roll",
+      "endpoint": "/pianoroll/clear",
+      "method": "POST"
+    },
+    {
+      "name": "flstudio_save_project",
+      "description": "Save FL Studio project",
+      "endpoint": "/project/save",
+      "method": "POST",
+      "parameters": {
+        "path": {"type": "string"}
+      }
+    },
+    {
+      "name": "flstudio_new_project",
+      "description": "Create new project",
+      "endpoint": "/project/new",
+      "method": "POST"
+    },
+    {
+      "name": "flstudio_generate_drums",
+      "description": "Generate drum pattern (styles: basic, trap, house, techno, hiphop, lofi, dubstep, jungle)",
+      "endpoint": "/generate/drums",
+      "method": "POST",
+      "parameters": {
+        "style": {"type": "string", "enum": ["basic", "trap", "house", "techno", "hiphop", "lofi", "dubstep", "jungle"], "default": "house"},
+        "bars": {"type": "integer", "minimum": 1, "maximum": 16, "default": 1},
+        "complexity": {"type": "integer", "minimum": 1, "maximum": 5, "default": 3},
+        "swing": {"type": "number", "minimum": 0, "maximum": 1, "default": 0}
+      }
+    },
+    {
+      "name": "flstudio_generate_bass",
+      "description": "Generate bass line",
+      "endpoint": "/generate/bass",
+      "method": "POST",
+      "parameters": {
+        "root": {"type": "integer", "minimum": 24, "maximum": 60, "default": 36, "description": "MIDI note (36=C2)"},
+        "scale": {"type": "string", "enum": ["major", "minor", "pentatonic", "blues"], "default": "minor"},
+        "length": {"type": "integer", "minimum": 4, "maximum": 64, "default": 8},
+        "pattern": {"type": "string", "enum": ["walking", "drone", "driving", "syncopated", "plucks", "offbeat"], "default": "walking"}
+      }
+    },
+    {
+      "name": "flstudio_generate_melody",
+      "description": "Generate melodic phrase",
+      "endpoint": "/generate/melody",
+      "method": "POST",
+      "parameters": {
+        "key": {"type": "integer", "minimum": 24, "maximum": 84, "default": 60, "description": "MIDI root note (60=C4)"},
+        "scale": {"type": "string", "enum": ["major", "minor", "pentatonic", "dorian", "phrygian", "lydian", "mixolydian"], "default": "minor"},
+        "length": {"type": "integer", "minimum": 4, "maximum": 64, "default": 8}
+      }
+    },
+    {
+      "name": "flstudio_generate_chords",
+      "description": "Generate chord progression",
+      "endpoint": "/generate/chords",
+      "method": "POST",
+      "parameters": {
+        "key": {"type": "integer", "minimum": 24, "maximum": 84, "default": 60},
+        "style": {"type": "string", "enum": ["pop", "pop_alt", "jazz", "jazz_ii_v", "cinematic", "edm", "soul", "rock", "blues", "reggae"], "default": "pop"},
+        "bars": {"type": "integer", "minimum": 2, "maximum": 32, "default": 4}
+      }
+    },
+    {
+      "name": "flstudio_generate_track",
+      "description": "Generate complete track with drums, bass, melody, and chords",
+      "endpoint": "/generate/track",
+      "method": "POST",
+      "parameters": {
+        "style": {"type": "string", "enum": ["basic", "trap", "house", "techno", "hiphop", "lofi", "dubstep", "jungle"], "default": "house"},
+        "key": {"type": "integer", "minimum": 24, "maximum": 84, "default": 60},
+        "scale": {"type": "string", "enum": ["major", "minor", "pentatonic", "dorian", "mixolydian"], "default": "minor"},
+        "bars": {"type": "integer", "minimum": 4, "maximum": 64, "default": 8},
+        "tempo": {"type": "integer", "minimum": 40, "maximum": 200, "default": 120}
+      }
+    }
+  ],
+  "generators": {
+    "drum_styles": ["basic", "trap", "house", "techno", "hiphop", "lofi", "dubstep", "jungle"],
+    "scales": ["major", "minor", "pentatonic", "dorian", "phrygian", "lydian", "mixolydian", "blues", "harmonic_minor", "melodic_minor"],
+    "chord_styles": ["pop", "pop_alt", "jazz", "jazz_ii_v", "cinematic", "edm", "soul", "rock", "blues", "reggae"],
+    "chord_types": ["major", "minor", "diminished", "augmented", "sus2", "sus4", "6", "7", "maj7", "min7", "min7b5", "9", "maj9"],
+    "bass_patterns": ["walking", "drone", "driving", "syncopated", "plucks", "offbeat"]
+  }
+}

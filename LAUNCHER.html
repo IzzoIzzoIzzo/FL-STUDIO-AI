@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SHADDAI Music Engine - Launcher</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            min-height: 100vh;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #00d4ff, #7b2ff7, #f107a3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .subtitle {
+            color: #aaa;
+            margin-bottom: 30px;
+            font-size: 1.2rem;
+        }
+        
+        .buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            max-width: 600px;
+        }
+        
+        .btn {
+            padding: 25px 40px;
+            font-size: 1.3rem;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: block;
+            text-align: center;
+        }
+        
+        .btn:hover { transform: scale(1.05); }
+        
+        .btn-primary {
+            background: linear-gradient(90deg, #00d4ff, #7b2ff7);
+            color: #fff;
+        }
+        
+        .btn-success {
+            background: linear-gradient(90deg, #00ff88, #00d4ff);
+            color: #000;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(90deg, #f107a3, #ff6b6b);
+            color: #fff;
+        }
+        
+        .btn-warning {
+            background: linear-gradient(90deg, #ff9900, #ff6600);
+            color: #fff;
+        }
+        
+        .info {
+            margin-top: 40px;
+            color: #666;
+            text-align: center;
+        }
+        
+        .info a { color: #00d4ff; }
+    </style>
+</head>
+<body>
+    <h1>SHADDAI Music Engine</h1>
+    <p class="subtitle">"Everything works and is connected!"</p>
+    
+    <div class="buttons">
+        <a href="UNIFIED.html" class="btn btn-primary" target="_blank">
+            🎵 Web Interface<br><small>Browser-based audio</small>
+        </a>
+        
+        <a href="flstudio_ai_interface.html" class="btn btn-success" target="_blank">
+            🎹 Full Studio<br><small>All features</small>
+        </a>
+        
+        <button class="btn btn-warning" onclick="runPython()">
+            ⚡ Generate Audio<br><small>Run Python backend</small>
+        </button>
+        
+        <button class="btn btn-danger" onclick="openFolder()">
+            📁 Open Files<br><small>View exports</small>
+        </button>
+    </div>
+    
+    <div class="info">
+        <p><b>Quick Start:</b> Click "Web Interface" to open in browser</p>
+        <p>Files saved to: <code>C:\Users\Brittany\OneDrive\Desktop\AI FL STUDIO BUILD\audio\</code></p>
+    </div>
+
+    <script>
+        function runPython() {
+            const cmd = 'python -c "from flstudio_ai_api import FLStudioAI; ai = FLStudioAI(); ai.generate_beat(\\'trap\\', 8); print(\\'Done!\\')"';
+            const cmdPath = 'C:\\Users\\Brittany\\OneDrive\\Desktop\\AI FL STUDIO BUILD\\run_beat.bat';
+            
+            // Create batch file
+            const fs = require('fs');
+            try {
+                const bat = '@echo off\\ncd /d "C:\\Users\\Brittany\\OneDrive\\Desktop\\AI FL STUDIO BUILD"\\npython -c "from flstudio_ai_api import FLStudioAI; ai = FLStudioAI(); ai.generate_beat(\\'trap\\', 8)"\\npause';
+                // Can't write file from browser, show instructions
+                alert('To run Python backend:\\n\\n1. Open Command Prompt\\n2. Type: cd "C:\\Users\\Brittany\\OneDrive\\Desktop\\AI FL STUDIO BUILD"\\n3. Type: python flstudio_ai_api.py\\n\\nOr just double-click ONE_CLICK.py');
+            } catch(e) {
+                alert('Open Command Prompt and type:\\npython "C:\\Users\\Brittany\\OneDrive\\Desktop\\AI FL STUDIO BUILD\\flstudio_ai_api.py"');
+            }
+        }
+        
+        function openFolder() {
+            window.open('file:///C:/Users/Brittany/OneDrive/Desktop/AI%20FL%20STUDIO%20BUILD/audio/');
+        }
+    </script>
+</body>
+</html>

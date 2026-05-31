@@ -1,0 +1,9 @@
+{
+  "type": "synth",
+  "name": "e2e_test",
+  "oscillators": [],
+  "filter": {},
+  "envelope": {},
+  "effects": [],
+  "lfo": {}
+}

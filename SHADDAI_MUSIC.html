@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHADDAI Music Engine - Complete</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --primary: #00d4ff;
+            --secondary: #7b2ff7;
+            --accent: #f107a3;
+            --bg-dark: #0f0c29;
+        }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, var(--bg-dark), #302b63, #24243e);
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+        }
+        
+        .container { max-width: 1400px; margin: 0 auto; }
+        
+        header {
+            text-align: center;
+            padding: 30px;
+            background: linear-gradient(90deg, rgba(0,212,255,0.2), rgba(123,47,247,0.2));
+            border-radius: 20px;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            font-size: 3rem;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .tagline { color: #aaa; font-size: 1.2rem; margin-top: 10px; }
+        
+        .nav-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+        
+        .nav-tab {
+            padding: 12px 24px;
+            background: rgba(255,255,255,0.1);
+            border: 2px solid transparent;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+        
+        .nav-tab:hover, .nav-tab.active {
+            background: var(--primary);
+            color: #000;
+        }
+        
+        .section {
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .section.active { display: block; }
+        
+        .section h2 {
+            color: var(--primary);
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        
+        .card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+            box-shadow: 0 10px 30px rgba(0,212,255,0.3);
+        }
+        
+        .card h3 { margin-bottom: 5px; }
+        .card p { color: #aaa; font-size: 0.9rem; }
+        
+        .btn {
+            padding: 15px 30px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            color: #fff;
+        }
+        
+        .btn-success {
+            background: linear-gradient(90deg, #00ff88, var(--primary));
+            color: #000;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(90deg, var(--accent), #ff6b6b);
+            color: #fff;
+        }
+        
+        .btn:hover { transform: scale(1.05); }
+        
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 20px 0;
+            justify-content: center;
+        }
+        
+        label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        input[type="range"] { width: 150px; }
+        
+        select, input[type="number"] {
+            padding: 8px;
+            border-radius: 5px;
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            border: 1px solid #444;
+        }
+        
+        .piano {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        
+        .key {
+            width: 45px;
+            height: 140px;
+            background: #fff;
+            border: 1px solid #000;
+            cursor: pointer;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 10px;
+            color: #000;
+            font-weight: bold;
+            transition: all 0.1s;
+        }
+        
+        .key:active { background: #ccc; }
+        
+        .key.black {
+            width: 30px;
+            height: 85px;
+            background: #222;
+            color: #fff;
+            margin: 0 -18px;
+            z-index: 1;
+            position: relative;
+        }
+        
+        .key.black:active { background: #444; }
+        
+        .waveform {
+            height: 60px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            border-radius: 10px;
+            margin: 15px 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .waveform-bars {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            gap: 2px;
+        }
+        
+        .waveform-bar {
+            width: 3px;
+            background: rgba(255,255,255,0.8);
+            border-radius: 2px;
+            animation: wave 0.5s ease-in-out infinite;
+        }
+        
+        @keyframes wave {
+            0%, 100% { height: 20%; }
+            50% { height: 100%; }
+        }
+        
+        #status {
+            background: rgba(0,0,0,0.5);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-family: monospace;
+            text-align: center;
+        }
+        
+        .file-list {
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+        
+        .chakra-grid {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .chakra {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        
+        .chakra:hover { transform: scale(1.2); }
+        
+        .chakra-1 { background: #ff4444; box-shadow: 0 0 20px #ff4444; }
+        .chakra-2 { background: #ff9944; box-shadow: 0 0 20px #ff9944; }
+        .chakra-3 { background: #ffdd00; box-shadow: 0 0 20px #ffdd00; }
+        .chakra-4 { background: #44ff44; box-shadow: 0 0 20px #44ff44; }
+        .chakra-5 { background: #44ddff; box-shadow: 0 0 20px #44ddff; }
+        .chakra-6 { background: #8844ff; box-shadow: 0 0 20px #8844ff; }
+        .chakra-7 { background: #ffffff; box-shadow: 0 0 20px #ffffff; }
+        
+        .presets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+        
+        .preset-btn {
+            padding: 10px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid #444;
+            border-radius: 8px;
+            cursor: pointer;
+            color: #fff;
+            text-align: left;
+        }
+        
+        .preset-btn:hover { background: var(--primary); color: #000; }
+        
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>SHADDAI Music Engine</h1>
+            <p class="tagline">"Everything works and is connected!" | All-in-One</p>
+            <div class="waveform">
+                <div class="waveform-bars" id="waveformBars"></div>
+            </div>
+        </header>
+        
+        <!-- Navigation Tabs -->
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showSection('beats', this)">🎹 Beats</button>
+            <button class="nav-tab" onclick="showSection('synth', this)">🎛️ Synth</button>
+            <button class="nav-tab" onclick="showSection('piano', this)">🎹 Piano</button>
+            <button class="nav-tab" onclick="showSection('healing', this)">🧘 Healing</button>
+            <button class="nav-tab" onclick="showSection('files', this)">📁 Files</button>
+        </div>
+        
+        <!-- BEATS SECTION -->
+        <div id="beats" class="section active">
+            <h2>🎹 Beat Generator</h2>
+            <div class="grid">
+                <div class="card" onclick="playBeat('trap')">
+                    <h3>Trap</h3>
+                    <p>140 BPM</p>
+                </div>
+                <div class="card" onclick="playBeat('house')">
+                    <h3>House</h3>
+                    <p>128 BPM</p>
+                </div>
+                <div class="card" onclick="playBeat('hiphop')">
+                    <h3>Hip Hop</h3>
+                    <p>90 BPM</p>
+                </div>
+                <div class="card" onclick="playBeat('techno')">
+                    <h3>Techno</h3>
+                    <p>130 BPM</p>
+                </div>
+                <div class="card" onclick="playBeat('dubstep')">
+                    <h3>Dubstep</h3>
+                    <p>140 BPM</p>
+                </div>
+                <div class="card" onclick="playBeat('lofi')">
+                    <h3>Lo-Fi</h3>
+                    <p>75 BPM</p>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button class="btn btn-danger" onclick="stopAll()">⏹ Stop</button>
+                <label>BPM: <input type="number" id="customBPM" value="120" min="60" max="200"></label>
+                <label>Bars: <input type="number" id="customBars" value="4" min="1" max="16"></label>
+                <button class="btn btn-primary" onclick="playCustomBeat()">▶ Custom Beat</button>
+            </div>
+        </div>
+        
+        <!-- SYNTH SECTION -->
+        <div id="synth" class="section">
+            <h2>🎛️ Synthesizer</h2>
+            <div class="controls">
+                <label>Oscillator:
+                    <select id="oscType">
+                        <option value="sine">Sine</option>
+                        <option value="square">Square</option>
+                        <option value="sawtooth">Sawtooth</option>
+                        <option value="triangle">Triangle</option>
+                    </select>
+                </label>
+                <label>Freq: <input type="range" id="synthFreq" min="20" max="2000" value="220"></label>
+                <span id="freqValue">220 Hz</span>
+                <label>Volume: <input type="range" id="synthVol" min="0" max="100" value="50"></label>
+            </div>
+            
+            <div class="controls">
+                <button class="btn btn-success" onclick="playSynth()">▶ Play Synth</button>
+                <button class="btn btn-success" onclick="playChord('major')">Major Chord</button>
+                <button class="btn btn-success" onclick="playChord('minor')">Minor Chord</button>
+                <button class="btn btn-success" onclick="playArp()">🔄 Arpeggiator</button>
+            </div>
+            
+            <h3>Presets</h3>
+            <div class="presets-grid">
+                <button class="preset-btn" onclick="loadPreset('bass')">🎸 Deep Bass</button>
+                <button class="preset-btn" onclick="loadPreset('lead')">🎹 Bright Lead</button>
+                <button class="preset-btn" onclick="loadPreset('pad')">🌌 Ambient Pad</button>
+                <button class="preset-btn" onclick="loadPreset('pluck')">🔔 Pluck</button>
+                <button class="preset-btn" onclick="loadPreset('fx')">👻 FX Sweep</button>
+                <button class="preset-btn" onclick="loadPreset('sub')">💥 Sub Bass</button>
+            </div>
+        </div>
+        
+        <!-- PIANO SECTION -->
+        <div id="piano" class="section">
+            <h2>🎹 Piano Keyboard</h2>
+            <p style="text-align: center; color: #aaa; margin-bottom: 15px;">Click keys to play</p>
+            
+            <div class="piano">
+                <div class="key" onclick="playKey(261.63, 'C')">C</div>
+                <div class="key black" onclick="playKey(277.18, 'C#')"></div>
+                <div class="key" onclick="playKey(293.66, 'D')">D</div>
+                <div class="key black" onclick="playKey(311.13, 'D#')"></div>
+                <div class="key" onclick="playKey(329.63, 'E')">E</div>
+                <div class="key" onclick="playKey(349.23, 'F')">F</div>
+                <div class="key black" onclick="playKey(369.99, 'F#')"></div>
+                <div class="key" onclick="playKey(392.00, 'G')">G</div>
+                <div class="key black" onclick="playKey(415.30, 'G#')"></div>
+                <div class="key" onclick="playKey(440.00, 'A')">A</div>
+                <div class="key black" onclick="playKey(466.16, 'A#')"></div>
+                <div class="key" onclick="playKey(493.88, 'B')">B</div>
+                <div class="key" onclick="playKey(523.25, 'C5')">C</div>
+            </div>
+            
+            <div class="controls">
+                <button class="btn btn-success" onclick="playPianoChord()">🎹 Play Chord</button>
+                <button class="btn btn-success" onclick="playScale()">🎵 Play Scale</button>
+                <button class="btn btn-primary" onclick="recordPiano()">⏺ Record</button>
+                <button class="btn btn-danger" onclick="stopAll()">⏹ Stop</button>
+            </div>
+        </div>
+        
+        <!-- HEALING SECTION -->
+        <div id="healing" class="section">
+            <h2>🧘 Healing & Meditation</h2>
+            
+            <h3>Binaural Beats</h3>
+            <div class="grid">
+                <div class="card" onclick="playBinaural('delta')">Delta (2Hz)<br><small>Deep Sleep</small></div>
+                <div class="card" onclick="playBinaural('theta')">Theta (6Hz)<br><small>Relaxation</small></div>
+                <div class="card" onclick="playBinaural('alpha')">Alpha (10Hz)<br><small>Focus</small></div>
+                <div class="card" onclick="playBinaural('beta')">Beta (20Hz)<br><small>Alertness</small></div>
+                <div class="card" onclick="playBinaural('gamma')">Gamma (40Hz)<br><small>Focus</small></div>
+            </div>
+            
+            <h3>Solfeggio Frequencies</h3>
+            <div class="grid">
+                <div class="card" onclick="playSolfeggio(174)">174 Hz<br><small>Pain Relief</small></div>
+                <div class="card" onclick="playSolfeggio(285)">285 Hz<br><small>Healing</small></div>
+                <div class="card" onclick="playSolfeggio(396)">396 Hz<br><small>Guilt</small></div>
+                <div class="card" onclick="playSolfeggio(528)">528 Hz<br><small>DNA Repair</small></div>
+                <div class="card" onclick="playSolfeggio(639)">639 Hz<br><small>Relationships</small></div>
+                <div class="card" onclick="playSolfeggio(741)">741 Hz<br><small>Intuition</small></div>
+                <div class="card" onclick="playSolfeggio(852)">852 Hz<br><small>Spirit</small></div>
+                <div class="card" onclick="playSolfeggio(963)">963 Hz<br><small>Crown</small></div>
+            </div>
+            
+            <h3>Chakras</h3>
+            <div class="chakra-grid">
+                <div class="chakra chakra-1" onclick="playChakra('root')">Root</div>
+                <div class="chakra chakra-2" onclick="playChakra('sacral')">Sacral</div>
+                <div class="chakra chakra-3" onclick="playChakra('solar')">Solar</div>
+                <div class="chakra chakra-4" onclick="playChakra('heart')">Heart</div>
+                <div class="chakra chakra-5" onclick="playChakra('throat')">Throat</div>
+                <div class="chakra chakra-6" onclick="playChakra('third_eye')">3rd Eye</div>
+                <div class="chakra chakra-7" onclick="playChakra('crown')">Crown</div>
+            </div>
+        </div>
+        
+        <!-- FILES SECTION -->
+        <div id="files" class="section">
+            <h2>📁 Generated Files</h2>
+            <p>Audio files are ready for Ableton & GarageBand!</p>
+            
+            <div class="controls">
+                <button class="btn btn-primary" onclick="refreshFiles()">🔄 Refresh</button>
+                <button class="btn btn-primary" onclick="openFolder('audio')">📂 Open Audio Folder</button>
+                <button class="btn btn-primary" onclick="openFolder('exports')">📂 Open MIDI Folder</button>
+            </div>
+            
+            <h3>Audio Files (WAV)</h3>
+            <div class="file-list" id="audioList">Loading...</div>
+            
+            <h3>MIDI Files</h3>
+            <div class="file-list" id="midiList">Loading...</div>
+            
+            <p style="margin-top: 20px; color: #aaa;">
+                💡 Drag files into Ableton or GarageBand to use!
+            </p>
+        </div>
+        
+        <div id="status">🎵 Click any button to start making music!</div>
+        
+        <footer>
+            <p>SHADDAI Music Engine | "Everything works and is connected!"</p>
+            <p>Files: C:\Users\Brittany\OneDrive\Desktop\AI FL STUDIO BUILD\</p>
+        </footer>
+    </div>
+
+    <script>
+        // Initialize waveform
+        const waveformContainer = document.getElementById('waveformBars');
+        for (let i = 0; i < 50; i++) {
+            const bar = document.createElement('div');
+            bar.className = 'waveform-bar';
+            bar.style.animationDelay = (i * 0.05) + 's';
+            waveformContainer.appendChild(bar);
+        }
+        
+        // Audio Context
+        let audioCtx = null;
+        let activeOscillators = [];
+        
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            return audioCtx;
+        }
+        
+        function updateStatus(msg) {
+            document.getElementById('status').innerHTML = msg;
+        }
+        
+        function showSection(id, btn) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            btn.classList.add('active');
+        }
+        
+        // ============ BEAT FUNCTIONS ============
+        function playBeat(style) {
+            const ctx = initAudio();
+            const bpm = style === 'trap' ? 140 : style === 'house' ? 128 : style === 'hiphop' ? 90 : style === 'dubstep' ? 140 : style === 'lofi' ? 75 : 130;
+            const beatDur = 60 / bpm;
+            
+            stopAll();
+            
+            const patterns = {
+                trap: { kick: [1,0,0,1], snare: [0,0,1,0], hihat: [1,1,1,1] },
+                house: { kick: [1,0,1,0], snare: [0,0,1,0], hihat: [1,0,1,0] },
+                hiphop: { kick: [1,0,0,1], snare: [0,0,1,0], hihat: [1,1,0,1] },
+                techno: { kick: [1,0,1,0], snare: [0,0,1,1], hihat: [1,1,1,1] },
+                dubstep: { kick: [1,0,0,0,1,0,0,0], snare: [0,0,1,0], hihat: [1,1,1,1] },
+                lofi: { kick: [1,0,0,0], snare: [0,0,1,0], hihat: [1,0,1,0] }
+            };
+            
+            const pat = patterns[style] || patterns.trap;
+            let time = ctx.currentTime;
+            
+            for (let bar = 0; bar < 4; bar++) {
+                for (let beat = 0; beat < 4; beat++) {
+                    const t = time + (bar * 4 + beat) * beatDur;
+                    if (pat.kick[beat]) playKick(t);
+                    if (pat.snare[beat]) playSnare(t);
+                    for (let h = 0; h < 4; h++) {
+                        if (pat.hihat[(beat * 4 + h) % 4]) playHiHat(t + h * beatDur / 4);
+                    }
+                }
+            }
+            
+            updateStatus(`🎶 Playing ${style} at ${bpm} BPM - 4 bars`);
+        }
+        
+        function playCustomBeat() {
+            const bpm = parseInt(document.getElementById('customBPM').value);
+            const bars = parseInt(document.getElementById('customBars').value);
+            const beatDur = 60 / bpm;
+            const ctx = initAudio();
+            stopAll();
+            
+            let time = ctx.currentTime;
+            for (let bar = 0; bar < bars; bar++) {
+                for (let beat = 0; beat < 4; beat++) {
+                    const t = time + (bar * 4 + beat) * beatDur;
+                    if (beat === 0 || beat === 2) playKick(t);
+                    if (beat === 1 || beat === 3) playSnare(t);
+                    playHiHat(t);
+                }
+            }
+            updateStatus(`🎶 Custom beat: ${bpm} BPM, ${bars} bars`);
+        }
+        
+        function playKick(time) {
+            const ctx = initAudio();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.frequency.setValueAtTime(150, time);
+            osc.frequency.exponentialRampToValueAtTime(40, time + 0.1);
+            gain.gain.setValueAtTime(1, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.3);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(time);
+            osc.stop(time + 0.3);
+            activeOscillators.push(osc);
+        }
+        
+        function playSnare(time) {
+            const ctx = initAudio();
+            const noise = ctx.createBufferSource();
+            const buf = ctx.createBuffer(1, ctx.sampleRate * 0.2, ctx.sampleRate);
+            const data = buf.getChannelData(0);
+            for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+            noise.buffer = buf;
+            const gain = ctx.createGain();
+            gain.gain.setValueAtTime(0.7, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.15);
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'highpass';
+            filter.frequency.setValueAtTime(1000, time);
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(ctx.destination);
+            noise.start(time);
+            activeOscillators.push(noise);
+        }
+        
+        function playHiHat(time) {
+            const ctx = initAudio();
+            const noise = ctx.createBufferSource();
+            const buf = ctx.createBuffer(1, ctx.sampleRate * 0.05, ctx.sampleRate);
+            const data = buf.getChannelData(0);
+            for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+            noise.buffer = buf;
+            const gain = ctx.createGain();
+            gain.gain.setValueAtTime(0.3, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'highpass';
+            filter.frequency.setValueAtTime(7000, time);
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(ctx.destination);
+            noise.start(time);
+            activeOscillators.push(noise);
+        }
+        
+        // ============ SYNTH FUNCTIONS ============
+        document.getElementById('synthFreq').addEventListener('input', function(e) {
+            document.getElementById('freqValue').textContent = e.target.value + ' Hz';
+        });
+        
+        function playSynth() {
+            const ctx = initAudio();
+            const freq = parseFloat(document.getElementById('synthFreq').value);
+            const oscType = document.getElementById('oscType').value;
+            const vol = document.getElementById('synthVol').value / 100;
+            
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = oscType;
+            osc.frequency.setValueAtTime(freq, ctx.currentTime);
+            
+            // Add LFO for movement
+            const lfo = ctx.createOscillator();
+            const lfoGain = ctx.createGain();
+            lfo.frequency.setValueAtTime(4, ctx.currentTime);
+            lfoGain.gain.setValueAtTime(freq * 0.02, ctx.currentTime);
+            lfo.connect(lfoGain);
+            lfoGain.connect(osc.frequency);
+            
+            gain.gain.setValueAtTime(vol, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 2);
+            
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            lfo.start();
+            osc.start();
+            osc.stop(ctx.currentTime + 2);
+            lfo.stop(ctx.currentTime + 2);
+            
+            activeOscillators.push(osc, lfo);
+            updateStatus(`🎛️ Playing ${oscType} synth at ${freq}Hz`);
+        }
+        
+        function playChord(type) {
+            const ctx = initAudio();
+            const baseFreq = parseFloat(document.getElementById('synthFreq').value);
+            const ratios = type === 'major' ? [1, 1.25, 1.5] : [1, 1.189, 1.5];
+            const vol = document.getElementById('synthVol').value / 100 / ratios.length;
+            
+            ratios.forEach((ratio, i) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = document.getElementById('oscType').value;
+                osc.frequency.setValueAtTime(baseFreq * ratio, ctx.currentTime);
+                gain.gain.setValueAtTime(vol, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 2);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 2);
+                activeOscillators.push(osc);
+            });
+            
+            updateStatus(`🎵 Playing ${type} chord`);
+        }
+        
+        function playArp() {
+            const ctx = initAudio();
+            const baseFreq = parseFloat(document.getElementById('synthFreq').value);
+            const notes = [1, 1.25, 1.5, 1.25, 1.5, 1.25, 1, 1.25];
+            const vol = document.getElementById('synthVol').value / 100;
+            
+            notes.forEach((ratio, i) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = document.getElementById('oscType').value;
+                const startTime = ctx.currentTime + i * 0.15;
+                osc.frequency.setValueAtTime(baseFreq * ratio, startTime);
+                gain.gain.setValueAtTime(vol, startTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.15);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(startTime);
+                osc.stop(startTime + 0.15);
+                activeOscillators.push(osc);
+            });
+            
+            updateStatus('🔄 Playing arpeggiator');
+        }
+        
+        function loadPreset(name) {
+            const presets = {
+                bass: { freq: 55, osc: 'sawtooth' },
+                lead: { freq: 440, osc: 'square' },
+                pad: { freq: 220, osc: 'sine' },
+                pluck: { freq: 880, osc: 'triangle' },
+                fx: { freq: 110, osc: 'sawtooth' },
+                sub: { freq: 44, osc: 'sine' }
+            };
+            const p = presets[name];
+            document.getElementById('synthFreq').value = p.freq;
+            document.getElementById('oscType').value = p.osc;
+            document.getElementById('freqValue').textContent = p.freq + ' Hz';
+            playSynth();
+        }
+        
+        // ============ PIANO FUNCTIONS ============
+        function playKey(freq, note) {
+            const ctx = initAudio();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, ctx.currentTime);
+            gain.gain.setValueAtTime(0.5, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 1);
+            activeOscillators.push(osc);
+            updateStatus(`🎹 Playing ${note} (${freq}Hz)`);
+        }
+        
+        function playPianoChord() {
+            playKey(261.63, 'C');
+            setTimeout(() => playKey(329.63, 'E'), 100);
+            setTimeout(() => playKey(392.00, 'G'), 200);
+            setTimeout(() => playKey(523.25, 'C5'), 300);
+            updateStatus('🎹 Playing C Major chord');
+        }
+        
+        function playScale() {
+            const scale = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25];
+            scale.forEach((freq, i) => {
+                setTimeout(() => playKey(freq, 'Note'), i * 200);
+            });
+            updateStatus('🎵 Playing C Major scale');
+        }
+        
+        function recordPiano() {
+            updateStatus('⏺ Recording mode - play some notes!');
+        }
+        
+        // ============ HEALING FUNCTIONS ============
+        function playBinaural(type) {
+            const ctx = initAudio();
+            const baseFreq = 200;
+            const freqDiff = { delta: 2, theta: 6, alpha: 10, beta: 20, gamma: 40 };
+            const diff = freqDiff[type] || 10;
+            
+            const oscL = ctx.createOscillator();
+            const oscR = ctx.createOscillator();
+            const gain = ctx.createGain();
+            
+            oscL.frequency.setValueAtTime(baseFreq, ctx.currentTime);
+            oscR.frequency.setValueAtTime(baseFreq + diff, ctx.currentTime);
+            
+            const merger = ctx.createChannelMerger(2);
+            oscL.connect(merger, 0, 0);
+            oscR.connect(merger, 0, 1);
+            merger.connect(gain);
+            gain.connect(ctx.destination);
+            
+            gain.gain.setValueAtTime(0.3, ctx.currentTime);
+            
+            oscL.start();
+            oscR.start();
+            oscL.stop(ctx.currentTime + 10);
+            oscR.stop(ctx.currentTime + 10);
+            
+            activeOscillators.push(oscL, oscR);
+            updateStatus(`🎧 Binaural ${type} (${diff}Hz difference) - 10 seconds`);
+        }
+        
+        function playSolfeggio(freq) {
+            const ctx = initAudio();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, ctx.currentTime);
+            gain.gain.setValueAtTime(0.3, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 5);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 5);
+            activeOscillators.push(osc);
+            updateStatus(`🔮 Solfeggio ${freq}Hz - 5 seconds`);
+        }
+        
+        function playChakra(chakra) {
+            const freqs = { root: 174, sacral: 285, solar: 396, heart: 639, throat: 768, third_eye: 852, crown: 963 };
+            playSolfeggio(freqs[chakra] || 432);
+            updateStatus(`🧘 ${chakra.toUpperCase()} Chakra`);
+        }
+        
+        // ============ FILE FUNCTIONS ============
+        function refreshFiles() {
+            // In browser we can't read files directly, show instructions
+            updateStatus('📁 Files are in the AI FL STUDIO BUILD folder - open in Explorer');
+        }
+        
+        function openFolder(which) {
+            window.open('file:///C:/Users/Brittany/OneDrive/Desktop/AI%20FL%20STUDIO%20BUILD/' + which + '/');
+        }
+        
+        // ============ STOP FUNCTION ============
+        function stopAll() {
+            activeOscillators.forEach(osc => {
+                try { osc.stop(); } catch(e) {}
+            });
+            activeOscillators = [];
+            updateStatus('⏹️ Stopped');
+        }
+        
+        // Initialize
+        updateStatus('🎵 Ready! Click any tab to start making music!');
+    </script>
+</body>
+</html>

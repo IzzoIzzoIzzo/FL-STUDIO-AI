@@ -1,0 +1,1338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHADDAI OpenCode - Graph-Native Autonomous Agent</title>
+    <style>
+        /* ============================================
+           SHADDAI OPENCORE - AINL GRAPH ARCHITECTURE
+           "Everything works and is connected!"
+           ============================================ */
+        
+        :root {
+            --shaddai-gold: #ffd700;
+            --shaddai-cyan: #00d4ff;
+            --shaddai-purple: #8844ff;
+            --shaddai-pink: #f107a3;
+            --shaddai-green: #00ff88;
+            --shaddai-red: #ff4444;
+            --bg-deep: #0a0a12;
+            --bg-surface: #12121a;
+            --bg-card: #1a1a24;
+            --border-subtle: rgba(255,255,255,0.08);
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            background: var(--bg-deep);
+            color: #e0e0e0;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        /* ===== GRID BACKGROUND ===== */
+        .grid-bg {
+            position: fixed;
+            inset: 0;
+            background-image: 
+                linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: -1;
+        }
+        
+        .container { max-width: 1600px; margin: 0 auto; padding: 20px; }
+        
+        /* ===== HEADER ===== */
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 30px;
+            background: linear-gradient(180deg, rgba(255,215,0,0.1), transparent);
+            border-bottom: 1px solid var(--border-subtle);
+            margin-bottom: 20px;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .logo h1 {
+            font-size: 2rem;
+            background: linear-gradient(90deg, var(--shaddai-gold), var(--shaddai-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 4px;
+        }
+        
+        .logo-badge {
+            background: var(--shaddai-purple);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+        }
+        
+        .status-bar {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: #888;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--shaddai-green);
+            animation: pulse 2s infinite;
+        }
+        
+        .status-dot.offline { background: var(--shaddai-red); animation: none; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* ===== MAIN GRID ===== */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 250px 1fr 300px;
+            gap: 20px;
+            min-height: calc(100vh - 120px);
+        }
+        
+        /* ===== SIDEBAR - AGENT GRAPH ===== */
+        .agent-sidebar {
+            background: var(--bg-surface);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid var(--border-subtle);
+        }
+        
+        .sidebar-title {
+            font-size: 0.8rem;
+            color: var(--shaddai-cyan);
+            letter-spacing: 2px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .sidebar-title::before { content: '◈'; }
+        
+        .agent-node {
+            background: var(--bg-card);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .agent-node:hover {
+            border-color: var(--shaddai-cyan);
+            transform: translateX(5px);
+        }
+        
+        .agent-node.active {
+            border-color: var(--shaddai-gold);
+            background: rgba(255,215,0,0.1);
+        }
+        
+        .agent-node::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: var(--agent-color, #888);
+        }
+        
+        .agent-name {
+            font-weight: bold;
+            font-size: 0.95rem;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .agent-role {
+            font-size: 0.75rem;
+            color: #666;
+            margin-top: 4px;
+        }
+        
+        .agent-status {
+            font-size: 0.7rem;
+            color: var(--shaddai-green);
+            margin-top: 8px;
+        }
+        
+        /* AINL Primitives Legend */
+        .ainl-legend {
+            margin-top: 30px;
+            padding: 15px;
+            background: var(--bg-card);
+            border-radius: 10px;
+        }
+        
+        .ainl-title {
+            font-size: 0.75rem;
+            color: var(--shaddai-purple);
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+        
+        .ainl-ops {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        
+        .ainl-op {
+            font-size: 0.75rem;
+            padding: 6px 10px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .ainl-op span {
+            background: var(--shaddai-cyan);
+            color: #000;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.7rem;
+        }
+        
+        /* ===== CENTER - MAIN CONTENT ===== */
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 5px;
+            background: var(--bg-surface);
+            padding: 10px;
+            border-radius: 12px;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            background: transparent;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+        
+        .tab:hover { color: #fff; background: rgba(255,255,255,0.05); }
+        
+        .tab.active {
+            background: linear-gradient(90deg, var(--shaddai-cyan), var(--shaddai-purple));
+            color: #000;
+            font-weight: bold;
+        }
+        
+        /* Chat Panel */
+        .chat-panel {
+            flex: 1;
+            background: var(--bg-surface);
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--border-subtle);
+            overflow: hidden;
+        }
+        
+        .chat-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .chat-title {
+            font-size: 1rem;
+            color: var(--shaddai-gold);
+        }
+        
+        .chat-model {
+            font-size: 0.8rem;
+            color: #666;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .message {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        .message.user {
+            background: rgba(0,212,255,0.15);
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .message.assistant {
+            background: var(--bg-card);
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+        
+        .message.system {
+            background: rgba(136,68,255,0.15);
+            align-self: center;
+            font-size: 0.8rem;
+            color: #aaa;
+            text-align: center;
+        }
+        
+        .chat-input-area {
+            padding: 15px;
+            border-top: 1px solid var(--border-subtle);
+            display: flex;
+            gap: 10px;
+        }
+        
+        .chat-input {
+            flex: 1;
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 12px 16px;
+            color: #fff;
+            font-family: inherit;
+            font-size: 0.9rem;
+            resize: none;
+            min-height: 50px;
+        }
+        
+        .chat-input:focus {
+            outline: none;
+            border-color: var(--shaddai-cyan);
+        }
+        
+        .send-btn {
+            background: linear-gradient(135deg, var(--shaddai-cyan), var(--shaddai-purple));
+            border: none;
+            border-radius: 10px;
+            padding: 12px 20px;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .send-btn:hover { transform: scale(1.05); }
+        
+        /* ===== RIGHT PANEL ===== */
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        /* Graph Stats */
+        .stats-card {
+            background: var(--bg-surface);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid var(--border-subtle);
+        }
+        
+        .stats-title {
+            font-size: 0.8rem;
+            color: var(--shaddai-cyan);
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+        }
+        
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: 0.85rem;
+        }
+        
+        .stat-label { color: #888; }
+        .stat-value { color: var(--shaddai-green); font-weight: bold; }
+        
+        /* Memory Panel */
+        .memory-panel {
+            background: var(--bg-surface);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid var(--border-subtle);
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .memory-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .memory-title {
+            font-size: 0.8rem;
+            color: var(--shaddai-purple);
+            letter-spacing: 1px;
+        }
+        
+        .memory-count {
+            background: var(--shaddai-purple);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+        }
+        
+        .memory-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+        
+        .memory-item {
+            background: var(--bg-card);
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .memory-item:hover {
+            background: rgba(136,68,255,0.2);
+        }
+        
+        .memory-type {
+            font-size: 0.65rem;
+            color: var(--shaddai-cyan);
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+        
+        .memory-text {
+            color: #aaa;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        /* Tasks Panel */
+        .tasks-panel {
+            background: var(--bg-surface);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid var(--border-subtle);
+            max-height: 300px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .tasks-title {
+            font-size: 0.8rem;
+            color: var(--shaddai-pink);
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+        }
+        
+        .task-item {
+            background: var(--bg-card);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .task-name {
+            font-size: 0.85rem;
+        }
+        
+        .task-status {
+            font-size: 0.7rem;
+            padding: 3px 8px;
+            border-radius: 10px;
+        }
+        
+        .task-status.pending { background: #444; }
+        .task-status.running { background: var(--shaddai-cyan); color: #000; }
+        .task-status.done { background: var(--shaddai-green); color: #000; }
+        .task-status.failed { background: var(--shaddai-red); }
+        
+        /* ===== MODAL ===== */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .modal-overlay.active { display: flex; }
+        
+        .modal {
+            background: var(--bg-surface);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            border: 1px solid var(--shaddai-cyan);
+        }
+        
+        .modal-title {
+            font-size: 1.3rem;
+            color: var(--shaddai-gold);
+            margin-bottom: 20px;
+        }
+        
+        .modal-input {
+            width: 100%;
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 12px;
+            color: #fff;
+            font-family: inherit;
+            margin-bottom: 15px;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        
+        .modal-btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+            border: none;
+        }
+        
+        .modal-btn.cancel { background: #333; color: #fff; }
+        .modal-btn.confirm { background: var(--shaddai-cyan); color: #000; }
+        
+        /* ===== GRAPH VISUALIZATION ===== */
+        .graph-view {
+            position: fixed;
+            inset: 0;
+            background: var(--bg-deep);
+            z-index: 2000;
+            display: none;
+            padding: 20px;
+        }
+        
+        .graph-view.active { display: block; }
+        
+        .graph-canvas {
+            width: 100%;
+            height: calc(100% - 60px);
+            position: relative;
+        }
+        
+        .graph-node {
+            position: absolute;
+            background: var(--bg-card);
+            border: 2px solid var(--shaddai-cyan);
+            border-radius: 10px;
+            padding: 15px;
+            cursor: move;
+            min-width: 120px;
+            text-align: center;
+        }
+        
+        .graph-node.agent { border-color: var(--shaddai-gold); }
+        .graph-node.task { border-color: var(--shaddai-pink); }
+        .graph-node.memory { border-color: var(--shaddai-purple); }
+        .graph-node.tool { border-color: var(--shaddai-green); }
+        
+        .graph-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--shaddai-red);
+            border: none;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        
+        /* ===== FOOTER ===== */
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #444;
+            font-size: 0.8rem;
+        }
+        
+        .value-proposition {
+            background: linear-gradient(90deg, rgba(255,215,0,0.1), rgba(0,212,255,0.1));
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .vp-title {
+            color: var(--shaddai-gold);
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+        
+        .vp-text {
+            color: #aaa;
+            font-size: 0.8rem;
+        }
+        
+        /* ===== SCROLLBAR ===== */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-deep); }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #444; }
+    </style>
+</head>
+<body>
+    <div class="grid-bg"></div>
+    
+    <div class="container">
+        <!-- HEADER -->
+        <header>
+            <div class="logo">
+                <h1>SHADDAI</h1>
+                <span class="logo-badge">OPENCORE v1.0</span>
+            </div>
+            <div class="status-bar">
+                <div class="status-item">
+                    <span class="status-dot" id="ollamaStatus"></span>
+                    <span>Ollama</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-dot" id="graphStatus"></span>
+                    <span>Graph Engine</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-dot" id="serverStatus"></span>
+                    <span>Server (8000)</span>
+                </div>
+            </div>
+        </header>
+        
+        <!-- VALUE PROPOSITION -->
+        <div class="value-proposition">
+            <div class="vp-title">🎯 SHADDAI: Graph-Native Autonomous Agent Dashboard</div>
+            <div class="vp-text">
+                Zero API costs • Local LLM via Ollama • AINL Workflows (compile once, run many) • 90-95% token savings
+            </div>
+        </div>
+        
+        <!-- MAIN GRID -->
+        <div class="main-grid">
+            <!-- LEFT - AGENT GRAPH -->
+            <div class="agent-sidebar">
+                <div class="sidebar-title">AGENT GRAPH NODES</div>
+                
+                <!-- SHADDAI - Supreme Commander -->
+                <div class="agent-node active" style="--agent-color: #ffd700" onclick="selectAgent('shaddai')">
+                    <div class="agent-name">
+                        <span>SHADDAI</span>
+                        <span style="color:var(--shaddai-gold)">◈</span>
+                    </div>
+                    <div class="agent-role">Supreme Commander</div>
+                    <div class="agent-status">● Orchestrates all agents via graph edges</div>
+                </div>
+                
+                <!-- SOD - Research/Wisdom -->
+                <div class="agent-node" style="--agent-color: #8844ff" onclick="selectAgent('sod')">
+                    <div class="agent-name">
+                        <span>SOD</span>
+                        <span style="color:#8844ff">◈</span>
+                    </div>
+                    <div class="agent-role">Research & Wisdom</div>
+                    <div class="agent-status">● Q QUERY nodes for research</div>
+                </div>
+                
+                <!-- TIFERET - Creation -->
+                <div class="agent-node" style="--agent-color: #f107a3" onclick="selectAgent('tiferet')">
+                    <div class="agent-name">
+                        <span>TIFERET</span>
+                        <span style="color:#f107a3">◈</span>
+                    </div>
+                    <div class="agent-role">Creation & Design</div>
+                    <div class="agent-status">● C COMPUTE for content creation</div>
+                </div>
+                
+                <!-- BINAH - Tech Architect -->
+                <div class="agent-node" style="--agent-color: #00d4ff" onclick="selectAgent('binah')">
+                    <div class="agent-name">
+                        <span>BINAH</span>
+                        <span style="color:#00d4ff">◈</span>
+                    </div>
+                    <div class="agent-role">Tech Architect</div>
+                    <div class="agent-status">● L LOGIC for coding & automation</div>
+                </div>
+                
+                <!-- MAMMON - Wealth -->
+                <div class="agent-node" style="--agent-color: #00ff88" onclick="selectAgent('mammon')">
+                    <div class="agent-name">
+                        <span>MAMMON</span>
+                        <span style="color:#00ff88">◈</span>
+                    </div>
+                    <div class="agent-role">Wealth & Finance</div>
+                    <div class="agent-status">● S STORE + F FETCH for crypto/DEX</div>
+                </div>
+                
+                <!-- NEVUAH - Intel Oracle -->
+                <div class="agent-node" style="--agent-color: #ff9900" onclick="selectAgent('nevuah')">
+                    <div class="agent-name">
+                        <span>NEVUAH</span>
+                        <span style="color:#ff9900">◈</span>
+                    </div>
+                    <div class="agent-role">Intelligence Oracle</div>
+                    <div class="agent-status">● Q QUERY + C COMPUTE for predictions</div>
+                </div>
+                
+                <!-- GEVURAH - Guardian -->
+                <div class="agent-node" style="--agent-color: #ff4444" onclick="selectAgent('gevurah')">
+                    <div class="agent-name">
+                        <span>GEVURAH</span>
+                        <span style="color:#ff4444">◈</span>
+                    </div>
+                    <div class="agent-role">Guardian & Security</div>
+                    <div class="agent-status">● L LOGIC for guards & rate-limits</div>
+                </div>
+                
+                <!-- AINL Primitives Legend -->
+                <div class="ainl-legend">
+                    <div class="ainl-title">AINL PRIMITIVES (5 Ops)</div>
+                    <div class="ainl-ops">
+                        <div class="ainl-op"><span>S</span> STORE</div>
+                        <div class="ainl-op"><span>F</span> FETCH</div>
+                        <div class="ainl-op"><span>Q</span> QUERY</div>
+                        <div class="ainl-op"><span>C</span> COMPUTE</div>
+                        <div class="ainl-op"><span>L</span> LOGIC</div>
+                    </div>
+                </div>
+                
+                <button class="send-btn" style="width:100%;margin-top:20px" onclick="toggleGraphView()">
+                    🔗 Visualize Graph
+                </button>
+            </div>
+            
+            <!-- CENTER - MAIN CONTENT -->
+            <div class="main-content">
+                <!-- Tabs -->
+                <div class="tabs">
+                    <button class="tab active" onclick="showTab('chat', this)">💬 Chat</button>
+                    <button class="tab" onclick="showTab('tasks', this)">📋 Tasks</button>
+                    <button class="tab" onclick="showTab('workflow', this)">⚡ Workflows</button>
+                    <button class="tab" onclick="showTab('files', this)">📁 Files</button>
+                    <button class="tab" onclick="showTab('tools', this)">🔧 Tools</button>
+                </div>
+                
+                <!-- Chat Panel -->
+                <div class="chat-panel" id="chatPanel">
+                    <div class="chat-header">
+                        <div class="chat-title" id="chatTitle">SHADDAI • Supreme Commander</div>
+                        <div class="chat-model">
+                            <span class="status-dot" id="modelStatus"></span>
+                            <span id="modelName">ollama/llama3.2:3b</span>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="message system">
+                            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━<br>
+                            SHADDAI OpenCore v1.0 initialized<br>
+                            AINL Graph Engine • Local LLM Active<br>
+                            All 7 agents loaded as graph nodes<br>
+                            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                        </div>
+                        <div class="message assistant">
+                            <b>◈ SHADDAI:</b><br><br>
+                            Greetings. I am SHADDAI, the Supreme Commander of this unified graph system.<br><br>
+                            All logic, data, and UI exist as nodes and edges in one graph. My 6 agents operate as subgraphs, each handling their domain:<br><br>
+                            • <b>SOD</b> - Research & esoteric knowledge<br>
+                            • <b>TIFERET</b> - Content creation & design<br>
+                            • <b>BINAH</b> - Technical architecture & coding<br>
+                            • <b>MAMMON</b> - Wealth & crypto operations<br>
+                            • <b>NEVUAH</b> - Intelligence & predictions<br>
+                            • <b>GEVURAH</b> - Security & guards<br><br>
+                            Type your request and I will route it through the appropriate agent via graph edges. The AINL primitives (S, F, Q, C, L) power all workflows.
+                        </div>
+                    </div>
+                    
+                    <div class="chat-input-area">
+                        <textarea class="chat-input" id="chatInput" placeholder="Type your request... (e.g., 'research crypto trends', 'create a logo', 'check wallet balance')" rows="2"></textarea>
+                        <button class="send-btn" onclick="sendMessage()">→</button>
+                    </div>
+                </div>
+                
+                <!-- Tasks Panel (Hidden by default) -->
+                <div class="chat-panel" id="tasksPanel" style="display:none">
+                    <div class="chat-header">
+                        <div class="chat-title">Task Graph Nodes</div>
+                        <button class="send-btn" onclick="showCreateTaskModal()" style="padding:8px 16px;font-size:0.8rem">+ New Task</button>
+                    </div>
+                    <div class="chat-messages" id="taskList">
+                        <div class="task-item">
+                            <span class="task-name">Initialize Graph Engine</span>
+                            <span class="task-status done">done</span>
+                        </div>
+                        <div class="task-item">
+                            <span class="task-name">Connect Ollama LLM</span>
+                            <span class="task-status done">done</span>
+                        </div>
+                        <div class="task-item">
+                            <span class="task-name">Load 7 Agent Nodes</span>
+                            <span class="task-status done">done</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Workflows Panel -->
+                <div class="chat-panel" id="workflowPanel" style="display:none">
+                    <div class="chat-header">
+                        <div class="chat-title">AINL Workflows</div>
+                    </div>
+                    <div class="chat-messages" style="font-size:0.85rem">
+                        <p style="color:var(--shaddai-cyan);margin-bottom:15px">Compiled Workflows (compile once, run many):</p>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                            <div class="task-item">
+                                <span class="task-name">research_flow.ainl</span>
+                                <span class="task-status done">compiled</span>
+                            </div>
+                            <div class="task-item">
+                                <span class="task-name">create_content.ainl</span>
+                                <span class="task-status done">compiled</span>
+                            </div>
+                            <div class="task-item">
+                                <span class="task-name">code_automation.ainl</span>
+                                <span class="task-status done">compiled</span>
+                            </div>
+                            <div class="task-item">
+                                <span class="task-name">crypto_monitor.ainl</span>
+                                <span class="task-status done">compiled</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Files Panel -->
+                <div class="chat-panel" id="filesPanel" style="display:none">
+                    <div class="chat-header">
+                        <div class="chat-title">F FETCH Nodes - File System</div>
+                    </div>
+                    <div class="chat-messages">
+                        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+                            <div class="task-item" onclick="fetchFile('readme')">
+                                <span class="task-name">📄 Readme</span>
+                            </div>
+                            <div class="task-item" onclick="fetchFile('config')">
+                                <span class="task-name">⚙️ Config</span>
+                            </div>
+                            <div class="task-item" onclick="fetchFile('skills')">
+                                <span class="task-name">📚 Skills</span>
+                            </div>
+                            <div class="task-item" onclick="fetchFile('memory')">
+                                <span class="task-name">🧠 Memory</span>
+                            </div>
+                            <div class="task-item" onclick="fetchFile('agents')">
+                                <span class="task-name">🤖 Agents</span>
+                            </div>
+                            <div class="task-item" onclick="fetchFolder('projects')">
+                                <span class="task-name">📂 Projects</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tools Panel -->
+                <div class="chat-panel" id="toolsPanel" style="display:none">
+                    <div class="chat-header">
+                        <div class="chat-title">Tool Nodes (F FETCH + C COMPUTE)</div>
+                    </div>
+                    <div class="chat-messages">
+                        <p style="color:var(--shaddai-green);margin-bottom:15px">Available Tools:</p>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                            <div class="task-item"><span class="task-name">🔗 RPC (Solana)</span></div>
+                            <div class="task-item"><span class="task-name">📊 DEX Data</span></div>
+                            <div class="task-item"><span class="task-name">💰 Wallet Balance</span></div>
+                            <div class="task-item"><span class="task-name">📈 Price Feeds</span></div>
+                            <div class="task-item"><span class="task-name">📁 File Scan</span></div>
+                            <div class="task-item"><span class="task-name">🔍 Folder Scan</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- RIGHT PANEL -->
+            <div class="right-panel">
+                <!-- Graph Stats -->
+                <div class="stats-card">
+                    <div class="stats-title">GRAPH STATISTICS</div>
+                    <div class="stat-row">
+                        <span class="stat-label">Agent Nodes</span>
+                        <span class="stat-value">7</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Task Nodes</span>
+                        <span class="stat-value" id="taskCount">3</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Memory Nodes</span>
+                        <span class="stat-value" id="memoryCount">12</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Tool Nodes</span>
+                        <span class="stat-value">6</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Graph Edges</span>
+                        <span class="stat-value" id="edgeCount">24</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Tokens Saved</span>
+                        <span class="stat-value">94%</span>
+                    </div>
+                </div>
+                
+                <!-- Memory Panel -->
+                <div class="memory-panel">
+                    <div class="memory-header">
+                        <span class="memory-title">MEMORY NODES</span>
+                        <span class="memory-count" id="memCount">12</span>
+                    </div>
+                    <div class="memory-list" id="memoryList">
+                        <div class="memory-item">
+                            <div class="memory-type">EPISODE</div>
+                            <div class="memory-text">SHADDAI initialized at 2026-05-17</div>
+                        </div>
+                        <div class="memory-item">
+                            <div class="memory-type">SEMANTIC</div>
+                            <div class="memory-text">7 agents loaded as graph nodes</div>
+                        </div>
+                        <div class="memory-item">
+                            <div class="memory-type">PROCEDURAL</div>
+                            <div class="memory-text">AINL compile-once pattern active</div>
+                        </div>
+                        <div class="memory-item">
+                            <div class="memory-type">PERSONA</div>
+                            <div class="memory-text">Supreme Commander - orchestrator</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tasks -->
+                <div class="tasks-panel">
+                    <div class="tasks-title">ACTIVE TASKS</div>
+                    <div id="activeTasks">
+                        <div class="task-item">
+                            <span class="task-name">Monitor Ollama Status</span>
+                            <span class="task-status running">running</span>
+                        </div>
+                        <div class="task-item">
+                            <span class="task-name">Update Graph Statistics</span>
+                            <span class="task-status pending">pending</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>SHADDAI OpenCore v1.0 | AINL Graph Architecture | "Everything works and is connected!"</p>
+            <p>Local LLM: Ollama • Zero API Costs • 90-95% Token Savings</p>
+        </footer>
+    </div>
+    
+    <!-- Create Task Modal -->
+    <div class="modal-overlay" id="taskModal">
+        <div class="modal">
+            <div class="modal-title">Create New Task Node</div>
+            <input type="text" class="modal-input" id="taskNameInput" placeholder="Task name...">
+            <input type="text" class="modal-input" id="taskDescInput" placeholder="Description...">
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" onclick="closeTaskModal()">Cancel</button>
+                <button class="modal-btn confirm" onclick="createTask()">Create</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Graph Visualization -->
+    <div class="graph-view" id="graphView">
+        <button class="graph-close" onclick="toggleGraphView()">✕ Close</button>
+        <div class="graph-canvas" id="graphCanvas">
+            <!-- Graph nodes will be rendered here -->
+        </div>
+    </div>
+
+    <script>
+        /* ============================================
+           SHADDAI OPENCORE - AINL GRAPH ENGINE
+           ============================================ */
+        
+        // Current active agent
+        let currentAgent = 'shaddai';
+        
+        // Agent definitions (graph node types)
+        const agents = {
+            shaddai: {
+                name: 'SHADDAI',
+                role: 'Supreme Commander',
+                color: '#ffd700',
+                description: 'Orchestrates all agents, routes tasks via graph edges, manages global strategy.',
+                primitives: 'All (S, F, Q, C, L)'
+            },
+            sod: {
+                name: 'SOD',
+                role: 'Research & Wisdom',
+                color: '#8844ff',
+                description: 'Q QUERY nodes for research, esoteric texts, library access.',
+                primitives: 'Q QUERY'
+            },
+            tiferet: {
+                name: 'TIFERET',
+                role: 'Creation & Design',
+                color: '#f107a3',
+                description: 'C COMPUTE nodes for design, content, sprites, visuals.',
+                primitives: 'C COMPUTE'
+            },
+            binah: {
+                name: 'BINAH',
+                role: 'Tech Architect',
+                color: '#00d4ff',
+                description: 'L LOGIC nodes for coding, debugging, automation.',
+                primitives: 'L LOGIC'
+            },
+            mammon: {
+                name: 'MAMMON',
+                role: 'Wealth & Finance',
+                color: '#00ff88',
+                description: 'S STORE + F FETCH for wallet states, DEX, RPC, metrics.',
+                primitives: 'S STORE, F FETCH'
+            },
+            nevuah: {
+                name: 'NEVUAH',
+                role: 'Intelligence Oracle',
+                color: '#ff9900',
+                description: 'Q QUERY + C COMPUTE for predictions, trends, analysis.',
+                primitives: 'Q, C'
+            },
+            gevurah: {
+                name: 'GEVURAH',
+                role: 'Guardian & Security',
+                color: '#ff4444',
+                description: 'L LOGIC nodes for guards, rate-limits, safety rules.',
+                primitives: 'L LOGIC'
+            }
+        };
+        
+        // Memory storage (graph nodes)
+        const memory = [
+            { type: 'EPISODE', text: 'SHADDAI initialized at 2026-05-17' },
+            { type: 'SEMANTIC', text: '7 agents loaded as graph nodes' },
+            { type: 'PROCEDURAL', text: 'AINL compile-once pattern active' },
+            { type: 'PERSONA', text: 'Supreme Commander - orchestrator' }
+        ];
+        
+        // Task storage
+        const tasks = [
+            { name: 'Initialize Graph Engine', status: 'done' },
+            { name: 'Connect Ollama LLM', status: 'done' },
+            { name: 'Load 7 Agent Nodes', status: 'done' },
+            { name: 'Monitor Ollama Status', status: 'running' },
+            { name: 'Update Graph Statistics', status: 'pending' }
+        ];
+        
+        // Initialize
+        function init() {
+            updateStatus();
+            checkOllama();
+            setInterval(updateStatus, 5000);
+        }
+        
+        // Update status indicators
+        function updateStatus() {
+            // Ollama status (simulated)
+            document.getElementById('ollamaStatus').className = 'status-dot';
+            document.getElementById('modelStatus').className = 'status-dot';
+            
+            // Graph always active
+            document.getElementById('graphStatus').className = 'status-dot';
+            
+            // Server status
+            document.getElementById('serverStatus').className = 'status-dot';
+        }
+        
+        // Check Ollama (simulated)
+        function checkOllama() {
+            // In real implementation, this would call Ollama API
+            console.log('Checking Ollama at http://localhost:11434...');
+        }
+        
+        // Select agent
+        function selectAgent(agentId) {
+            currentAgent = agentId;
+            const agent = agents[agentId];
+            
+            // Update UI
+            document.querySelectorAll('.agent-node').forEach(n => n.classList.remove('active'));
+            event.target.closest('.agent-node').classList.add('active');
+            
+            document.getElementById('chatTitle').innerHTML = `${agent.name} • ${agent.role}`;
+            
+            // Add system message
+            addMessage('system', `━━━━ Switched to ${agent.name} ━━━━\nPrimitives: ${agent.primitives}\n${agent.description}`);
+        }
+        
+        // Show tab
+        function showTab(tabId, btn) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            btn.classList.add('active');
+            
+            ['chat', 'tasks', 'workflow', 'files', 'tools'].forEach(t => {
+                document.getElementById(t + 'Panel').style.display = 'none';
+            });
+            document.getElementById(tabId + 'Panel').style.display = 'flex';
+        }
+        
+        // Add message to chat
+        addMessage = function(type, content) {
+            const container = document.getElementById('chatMessages');
+            const msg = document.createElement('div');
+            msg.className = `message ${type}`;
+            
+            if (type === 'assistant') {
+                // Route to appropriate agent based on message content
+                const routedAgent = routeMessage(content);
+                msg.innerHTML = `<b>◈ ${routedAgent}:</b><br><br>${content}`;
+            } else if (type === 'system') {
+                msg.innerHTML = content.replace(/\n/g, '<br>');
+            } else {
+                msg.innerHTML = content;
+            }
+            
+            container.appendChild(msg);
+            container.scrollTop = container.scrollHeight;
+        };
+        
+        // Route message to appropriate agent
+        function routeMessage(msg) {
+            const lower = msg.toLowerCase();
+            
+            if (lower.includes('research') || lower.includes('lookup') || lower.includes('esoteric')) return 'SOD';
+            if (lower.includes('create') || lower.includes('design') || lower.includes('art')) return 'TIFERET';
+            if (lower.includes('code') || lower.includes('build') || lower.includes('program')) return 'BINAH';
+            if (lower.includes('crypto') || lower.includes('wallet') || lower.includes('trade') || lower.includes('price')) return 'MAMMON';
+            if (lower.includes('predict') || lower.includes('analysis') || lower.includes('trends')) return 'NEVUAH';
+            if (lower.includes('secure') || lower.includes('guard') || lower.includes('check')) return 'GEVURAH';
+            
+            return currentAgent.toUpperCase();
+        }
+        
+        // Send message
+        function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const msg = input.value.trim();
+            if (!msg) return;
+            
+            addMessage('user', msg);
+            input.value = '';
+            
+            // Simulate response (in real implementation, this would call Ollama)
+            setTimeout(() => {
+                const responses = {
+                    shaddai: `I have received your request and will route it through the appropriate agent subgraph. The AINL primitives will execute the workflow efficiently.`,
+                    sod: `Researching through Q QUERY nodes... Found relevant data in the knowledge graph.`,
+                    tiferet: `Creating via C COMPUTE nodes... Design workflow initialized.`,
+                    binah: `Coding via L LOGIC nodes... Automation pipeline ready.`,
+                    mammon: `Fetching wallet data via F FETCH... S STORE nodes updating with latest metrics.`,
+                    nevuah: `Analyzing trends via Q QUERY + C COMPUTE... Prediction engine running.`,
+                    gevurah: `Security check via L LOGIC nodes... All guards active, rate-limits normal.`
+                };
+                
+                const response = responses[currentAgent] || responses.shaddai;
+                addMessage('assistant', response);
+                
+                // Add to memory as episode
+                memory.push({ type: 'EPISODE', text: `User: ${msg.substring(0, 30)}...` });
+                updateMemoryDisplay();
+            }, 500);
+        }
+        
+        // Update memory display
+        function updateMemoryDisplay() {
+            const list = document.getElementById('memoryList');
+            list.innerHTML = memory.slice(-8).map(m => `
+                <div class="memory-item">
+                    <div class="memory-type">${m.type}</div>
+                    <div class="memory-text">${m.text}</div>
+                </div>
+            `).join('');
+            document.getElementById('memoryCount').textContent = memory.length;
+            document.getElementById('memCount').textContent = memory.length;
+        }
+        
+        // Update task display
+        function updateTaskDisplay() {
+            const list = document.getElementById('taskList');
+            list.innerHTML = tasks.map(t => `
+                <div class="task-item">
+                    <span class="task-name">${t.name}</span>
+                    <span class="task-status ${t.status}">${t.status}</span>
+                </div>
+            `).join('');
+            document.getElementById('taskCount').textContent = tasks.length;
+        }
+        
+        // Task modal
+        function showCreateTaskModal() {
+            document.getElementById('taskModal').classList.add('active');
+        }
+        
+        function closeTaskModal() {
+            document.getElementById('taskModal').classList.remove('active');
+        }
+        
+        function createTask() {
+            const name = document.getElementById('taskNameInput').value;
+            if (name) {
+                tasks.push({ name: name, status: 'pending' });
+                updateTaskDisplay();
+                addMessage('system', `Task created: ${name}`);
+                closeTaskModal();
+                document.getElementById('taskNameInput').value = '';
+            }
+        }
+        
+        // Graph visualization
+        function toggleGraphView() {
+            const view = document.getElementById('graphView');
+            view.classList.toggle('active');
+            
+            if (view.classList.contains('active')) {
+                renderGraph();
+            }
+        }
+        
+        function renderGraph() {
+            const canvas = document.getElementById('graphCanvas');
+            canvas.innerHTML = '';
+            
+            // Position agents in a circle
+            const centerX = 400;
+            const centerY = 300;
+            const radius = 200;
+            
+            Object.entries(agents).forEach(([id, agent], i) => {
+                const angle = (i / 7) * Math.PI * 2 - Math.PI / 2;
+                const x = centerX + Math.cos(angle) * radius;
+                const y = centerY + Math.sin(angle) * radius;
+                
+                const node = document.createElement('div');
+                node.className = 'graph-node agent';
+                node.style.left = x + 'px';
+                node.style.top = y + 'px';
+                node.style.borderColor = agent.color;
+                node.innerHTML = `<strong>${agent.name}</strong><br><small>${agent.role}</small>`;
+                canvas.appendChild(node);
+            });
+            
+            // Center SHADDAI
+            const shaddai = document.createElement('div');
+            shaddai.className = 'graph-node agent';
+            shaddai.style.left = (centerX - 60) + 'px';
+            shaddai.style.top = (centerY - 40) + 'px';
+            shaddai.style.width = '120px';
+            shaddai.style.borderColor = '#ffd700';
+            shaddai.style.background = 'linear-gradient(135deg, rgba(255,215,0,0.2), transparent)';
+            shaddai.innerHTML = '<strong>SHADDAI</strong><br><small>Center</small>';
+            canvas.appendChild(shaddai);
+        }
+        
+        // File operations (F FETCH nodes)
+        function fetchFile(type) {
+            addMessage('system', `F FETCH node executing: Reading ${type}...`);
+            setTimeout(() => {
+                addMessage('assistant', `File data retrieved for: ${type}\n\nIn a full implementation, this would read from the file system through the F FETCH primitive.`);
+            }, 500);
+        }
+        
+        function fetchFolder(type) {
+            addMessage('system', `F FETCH node executing: Scanning ${type} folder...`);
+            setTimeout(() => {
+                addMessage('assistant', `Folder scan complete: ${type}\n\nFound 12 items.\n\nIn full implementation, this would recursively scan directories.`);
+            }, 500);
+        }
+        
+        // Handle enter key in input
+        document.getElementById('chatInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+        
+        // Initialize on load
+        window.onload = init;
+    </script>
+</body>
+</html>

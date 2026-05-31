@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SHADDAI Music Engine</title>
+    <style>
+        body { 
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%);
+            color: #64ffda;
+            font-family: Arial;
+            text-align: center;
+            padding: 50px;
+        }
+        h1 { font-size: 40px; margin-bottom: 10px; }
+        .btn {
+            display: block;
+            width: 300px;
+            padding: 20px;
+            margin: 15px auto;
+            background: #64ffda;
+            color: #0a0a0f;
+            font-size: 20px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn:hover { background: #00bcd4; }
+        .info { color: #8892b0; margin-top: 30px; }
+        #result {
+            background: #0a0a0f;
+            padding: 20px;
+            margin: 20px;
+            border-radius: 10px;
+            text-align: left;
+            font-family: monospace;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>SHADDAI Music Engine</h1>
+    <p>"Everything works and is connected!"</p>
+    
+    <button class="btn" onclick="runSimpleBeat()">Generate TRAP Beat</button>
+    <button class="btn" onclick="runSynth()">Play Synth</button>
+    <button class="btn" onclick="runDrums()">Play Drums</button>
+    <button class="btn" onclick="runFullSong()">Generate Full Song</button>
+    
+    <div id="result"></div>
+    
+    <div class="info">
+        Files saved to:<br>
+        <b>C:\Users\Brittany\OneDrive\Desktop\AI FL STUDIO BUILD\exports\</b><br>
+        <b>C:\Users\Brittany\OneDrive\Desktop\AI FL STUDIO BUILD\audio\</b>
+    </div>
+
+    <script>
+        // Use ActiveX to run Python
+        function runCommand(cmd) {
+            var result = document.getElementById('result');
+            result.style.display = 'block';
+            result.innerHTML = "Running... please wait...";
+            
+            try {
+                var shell = new ActiveXObject("WScript.Shell");
+                var exec = shell.Exec('cmd /c cd "C:\\Users\\Brittany\\OneDrive\\Desktop\\AI FL STUDIO BUILD" && python -c "' + cmd + '"');
+                
+                // Wait for completion
+                var output = "";
+                while (exec.Status === 0) {
+                    // Busy waiting
+                }
+                
+                output = exec.StdOut.ReadAll();
+                result.innerHTML = output || "Done! Check exports/ folder";
+            } catch (e) {
+                result.innerHTML = "ActiveX blocked. Use Command Prompt instead:\n\n" +
+                    "1. Press Windows + R\n" +
+                    "2. Type: cmd\n" +
+                    "3. Type: cd \"C:\\Users\\Brittany\\OneDrive\\Desktop\\AI FL STUDIO BUILD\"\n" +
+                    "4. Type: python -c \"from flstudio_ai_api import FLStudioAI; api = FLStudioAI()\"";
+            }
+        }
+        
+        function runSimpleBeat() {
+            runCommand("from flstudio_ai_api import FLStudioAI; api = FLStudioAI(); api.generate_beat('trap', 4); print('Beat created!')");
+        }
+        function runSynth() {
+            runCommand("from flstudio_ai_api import FLStudioAI; api = FLStudioAI(); api.real_synth.load_preset('lead'); api.real_synth.play(440, 1.0); print('Synth played!')");
+        }
+        function runDrums() {
+            runCommand("from flstudio_ai_api import FLStudioAI; api = FLStudioAI(); api.real_drums.play('kick'); print('Drums played!')");
+        }
+        function runFullSong() {
+            runCommand("from flstudio_ai_api import FLStudioAI; api = FLStudioAI(); api.generate_full_track('house', True, True); print('Song created!')");
+        }
+    </script>
+</body>
+</html>

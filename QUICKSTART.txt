@@ -1,0 +1,87 @@
+╔═══════════════════════════════════════════════════════════════╗
+║                  FL STUDIO AI - QUICK START                    ║
+╚═══════════════════════════════════════════════════════════════╝
+
+═══════════════════════════════════════════════════════════════
+OPTION 1: USE THE QUICK LAUNCHER (EASIEST)
+═══════════════════════════════════════════════════════════════
+1. Double-click: QUICK_LAUNCH.bat
+2. Pick your style with a number/letter
+3. Done! MIDI files go to project folder
+
+═══════════════════════════════════════════════════════════════
+OPTION 2: USE THE WEB INTERFACE (VISUAL)
+═══════════════════════════════════════════════════════════════
+1. Double-click: START_AI_INTERFACE.bat
+2. Opens in your browser
+3. Click buttons to generate beats, play synth, download MIDI
+
+Features:
+- Beat Generator with scale/chord selection
+- Real-time Synthesizer with effects
+- Binaural Beats player
+- Chakra & Solfeggio frequencies
+- Piano keyboard
+- Download MIDI for FL Studio
+
+═══════════════════════════════════════════════════════════════
+OPTION 3: USE COMMAND LINE (MOST CONTROL)
+═══════════════════════════════════════════════════════════════
+
+Generate a track:
+  python flstudio_ai.py make trap 150 16
+
+Generate just drums:
+  python flstudio_ai.py drums_only house 4
+
+Generate audio (no FL Studio needed!):
+  python flstudio_ai.py tone 440 5          - Pure tone
+  python flstudio_ai.py binaural theta 60  - Relaxation
+  python flstudio_ai.py chakra heart 60    - Heart chakra
+  python flstudio_ai.py solfeggio 528 60   - Healing freq
+
+Export to MIDI:
+  python flstudio_ai.py export trap beat.mid
+
+See all commands:
+  python flstudio_ai.py info
+
+═══════════════════════════════════════════════════════════════
+OPTION 4: USE WITH CLAUDE CODE (AI-POWERED)
+═══════════════════════════════════════════════════════════════
+1. Start MCP server: python flstudio_mcp_server_v2.py
+2. In Claude Code, ask: "Make a trap beat at 150 BPM"
+3. Claude will call the MCP tools and generate your track!
+
+Server URL: http://localhost:5000
+
+═══════════════════════════════════════════════════════════════
+COMMON TASKS QUICK REFERENCE
+═══════════════════════════════════════════════════════════════
+
+Beat Styles:
+  trap, house, hiphop, dnb, dubstep, lofi, techno, afrobeats
+
+Frequencies:
+  396Hz - Root Chakra (security)
+  417Hz - Sacral Chakra (change)
+  528Hz - Solar Plexus (DNA repair)
+  639Hz - Heart Chakra (relationships)
+  741Hz - Throat Chakra (intuition)
+  852Hz - Third Eye (spiritual)
+  963Hz - Crown Chakra (enlightenment)
+
+Binaural Beats:
+  delta (0.5-4Hz)  - Deep sleep
+  theta (4-8Hz)   - Meditation
+  alpha (8-14Hz) - Relaxation
+  beta (14-30Hz) - Focus
+  gamma (30-50Hz) - Peak performance
+
+═══════════════════════════════════════════════════════════════
+OUTPUT FILES
+═══════════════════════════════════════════════════════════════
+- MIDI files: *.mid (import into FL Studio)
+- Audio files: audio/*.wav (works without FL Studio!)
+
+═══════════════════════════════════════════════════════════════

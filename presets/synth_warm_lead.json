@@ -1,0 +1,34 @@
+{
+  "type": "synth",
+  "name": "warm_lead",
+  "oscillators": [
+    {
+      "type": "sawtooth",
+      "detune": 5,
+      "volume": 0.8
+    },
+    {
+      "type": "square",
+      "detune": -5,
+      "volume": 0.5
+    }
+  ],
+  "filter": {
+    "type": "lowpass",
+    "cutoff": 2000,
+    "resonance": 2
+  },
+  "envelope": {
+    "attack": 0.01,
+    "decay": 0.2,
+    "sustain": 0.7,
+    "release": 0.3
+  },
+  "effects": [
+    {
+      "type": "reverb",
+      "mix": 0.3
+    }
+  ],
+  "lfo": {}
+}

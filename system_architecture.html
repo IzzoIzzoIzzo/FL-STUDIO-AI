@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHADDAI Music Engine - System Architecture</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #0a0a0f 100%);
+            color: #fff;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        .ui-overlay {
+            position: fixed;
+            z-index: 100;
+            pointer-events: none;
+        }
+        
+        .top-bar {
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px 40px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: auto;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .logo-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            box-shadow: 0 0 30px rgba(168, 85, 247, 0.5);
+        }
+        
+        .logo-text {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #fff 0%, #a855f7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 30px;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #a855f7;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .bottom-panel {
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 20px 40px;
+            background: linear-gradient(0deg, rgba(0,0,0,0.9) 0%, transparent 100%);
+            pointer-events: auto;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+        
+        .control-btn {
+            padding: 12px 24px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .control-btn:hover {
+            background: rgba(168, 85, 247, 0.3);
+            border-color: #a855f7;
+        }
+        
+        .control-btn.active {
+            background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            border-color: transparent;
+        }
+        
+        .info-panel {
+            position: fixed;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 320px;
+            background: rgba(10, 10, 20, 0.95);
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            border-radius: 16px;
+            padding: 20px;
+            z-index: 100;
+            display: none;
+            pointer-events: auto;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .info-panel.visible {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-50%) translateX(20px); }
+            to { opacity: 1; transform: translateY(-50%) translateX(0); }
+        }
+        
+        .info-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #a855f7;
+        }
+        
+        .info-section {
+            margin-bottom: 15px;
+        }
+        
+        .info-label {
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+        
+        .info-value {
+            font-size: 14px;
+            color: #ccc;
+        }
+        
+        .info-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .info-tag {
+            padding: 4px 10px;
+            background: rgba(168, 85, 247, 0.2);
+            border-radius: 12px;
+            font-size: 12px;
+            color: #a855f7;
+        }
+        
+        .legend {
+            position: fixed;
+            left: 20px;
+            bottom: 100px;
+            background: rgba(10, 10, 20, 0.9);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 15px;
+            z-index: 100;
+            pointer-events: auto;
+        }
+        
+        .legend-title {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        
+        .legend-items {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+        
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        .legend-line {
+            width: 20px;
+            height: 2px;
+            border-radius: 1px;
+        }
+        
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0a0a0f;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            transition: opacity 0.5s;
+        }
+        
+        .loading.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 3px solid rgba(168, 85, 247, 0.3);
+            border-top-color: #a855f7;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            margin-top: 20px;
+            color: #a855f7;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Initializing SHADDAI Music Engine...</div>
+    </div>
+    
+    <div id="canvas-container"></div>
+    
+    <div class="ui-overlay top-bar">
+        <div class="logo">
+            <div class="logo-icon">⚡</div>
+            <div class="logo-text">SHADDAI Music Engine</div>
+        </div>
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-value" id="modules-count">20</div>
+                <div class="stat-label">Modules</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="connections-count">45</div>
+                <div class="stat-label">Connections</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">100%</div>
+                <div class="stat-label">Complete</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="ui-overlay bottom-panel">
+        <div class="controls">
+            <button class="control-btn active" onclick="setView('3d')">3D View</button>
+            <button class="control-btn" onclick="setView('top')">Top Down</button>
+            <button class="control-btn" onclick="setView('radial')">Radial</button>
+            <button class="control-btn" onclick="setView('flow')">Flow</button>
+            <button class="control-btn" onclick="resetCamera()">Reset</button>
+        </div>
+    </div>
+    
+    <div class="legend">
+        <div class="legend-title">Categories</div>
+        <div class="legend-items">
+            <div class="legend-item">
+                <div class="legend-dot" style="background: #6366f1;"></div>
+                Core Generation
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: #10b981;"></div>
+                AI & Intelligence
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: #f59e0b;"></div>
+                Processing
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: #ec4899;"></div>
+                Synthesis
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: #06b6d4;"></div>
+                Performance
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: #8b5cf6;"></div>
+                Utilities
+            </div>
+        </div>
+    </div>
+    
+    <div class="info-panel" id="info-panel">
+        <div class="info-title" id="info-title">Module Name</div>
+        <div class="info-section">
+            <div class="info-label">Description</div>
+            <div class="info-value" id="info-desc">Description here</div>
+        </div>
+        <div class="info-section">
+            <div class="info-label">Category</div>
+            <div class="info-value" id="info-category">Category</div>
+        </div>
+        <div class="info-section">
+            <div class="info-label">Features</div>
+            <div class="info-tags" id="info-features"></div>
+        </div>
+        <div class="info-section">
+            <div class="info-label">Connected To</div>
+            <div class="info-tags" id="info-connected"></div>
+        </div>
+    </div>
+
+    <script>
+        // Module data with connections
+        const modules = [
+            { id: 'flstudio_ai_api', name: 'FL Studio AI API', category: 'core', color: 0x6366f1, 
+              desc: 'Main unified API connecting all modules', features: ['API', 'Web Server', 'MCP Protocol'], 
+              connections: ['super_engine', 'advanced_synth', 'drum_machine', 'ai_melody_engine', 'auto_mixer'] },
+            
+            { id: 'super_engine', name: 'Super Engine', category: 'core', color: 0x6366f1,
+              desc: 'Main beat generation engine with all styles', features: ['Beat Generation', 'Full Track', 'All Styles'],
+              connections: ['flstudio_ai_api', 'drum_machine', 'advanced_synth', 'music_theory_engine'] },
+            
+            { id: 'advanced_synth', name: 'Advanced Synth', category: 'core', color: 0x6366f1,
+              desc: 'Professional synthesizer with 47+ presets', features: ['Presets', 'Arpeggiator', 'Filters'],
+              connections: ['flstudio_ai_api', 'super_engine', 'effects_rack'] },
+            
+            { id: 'drum_machine', name: 'Drum Machine V3', category: 'core', color: 0x6366f1,
+              desc: '5 drum kits with patterns and fills', features: ['Kits', 'Patterns', 'Fills'],
+              connections: ['flstudio_ai_api', 'super_engine', 'neural_music_generator'] },
+            
+            { id: 'ai_melody_engine', name: 'AI Melody Engine', category: 'ai', color: 0x10b981,
+              desc: 'AI-powered melody and harmony generation', features: ['Melody', 'Chords', 'Innovation'],
+              connections: ['flstudio_ai_api', 'music_theory_engine', 'neural_music_generator'] },
+            
+            { id: 'neural_music_generator', name: 'Neural Music Gen', category: 'ai', color: 0x10b981,
+              desc: 'Deep learning music generation', features: ['LSTM', 'Style Transfer', 'Arrangement'],
+              connections: ['ai_melody_engine', 'music_theory_engine', 'drum_machine', 'auto_creator'] },
+            
+            { id: 'music_theory_engine', name: 'Music Theory', category: 'ai', color: 0x10b981,
+              desc: '50+ scales, 100+ chord types', features: ['Scales', 'Chords', 'Progressions'],
+              connections: ['super_engine', 'ai_melody_engine', 'neural_music_generator', 'esoteric_music_engine'] },
+            
+            { id: 'auto_mixer', name: 'Auto Mixer', category: 'processing', color: 0xf59e0b,
+              desc: 'Automatic mixing and mastering', features: ['Stem Separation', 'Vocal Processing', 'Mastering'],
+              connections: ['flstudio_ai_api', 'stem_separator', 'vocal_processor', 'mastering_engine'] },
+            
+            { id: 'stem_separator', name: 'Stem Separator', category: 'processing', color: 0xf59e0b,
+              desc: 'Extract drums, bass, vocals, melody', features: ['Drums', 'Bass', 'Vocals', 'Melody'],
+              connections: ['auto_mixer', 'audio_analyzer'] },
+            
+            { id: 'vocal_processor', name: 'Vocal Processor', category: 'processing', color: 0xf59e0b,
+              desc: 'Complete vocal chain', features: ['Pitch Correction', 'Harmonizer', 'Vocoder', 'Reverb'],
+              connections: ['auto_mixer', 'effects_rack'] },
+            
+            { id: 'advanced_synthesis_engine', name: 'Synthesis Engine', category: 'synthesis', color: 0xec4899,
+              desc: 'Wavetable, FM, Granular, Physical Modeling', features: ['Wavetable', 'FM', 'Granular', 'Physical'],
+              connections: ['effects_rack', 'sample_manipulation_engine'] },
+            
+            { id: 'esoteric_music_engine', name: 'Esoteric Engine', category: 'synthesis', color: 0xec4899,
+              desc: 'Sacred geometry, ancient tunings, healing', features: ['Sacred Geometry', 'Solfeggio', 'Planetary'],
+              connections: ['music_theory_engine', 'music_color_cymatics'] },
+            
+            { id: 'music_color_cymatics', name: 'Cymatics & Color', category: 'synthesis', color: 0xec4899,
+              desc: 'Frequency-to-color, binaural beats, cymatics', features: ['Frequency Color', 'Binaural', 'Solfeggio'],
+              connections: ['esoteric_music_engine', 'audio_analyzer'] },
+            
+            { id: 'effects_rack', name: 'Effects Rack', category: 'processing', color: 0xf59e0b,
+              desc: '9-effect professional chain', features: ['EQ', 'Compressor', 'Reverb', 'Delay'],
+              connections: ['advanced_synth', 'vocal_processor', 'advanced_synthesis_engine'] },
+            
+            { id: 'live_performance_dj', name: 'DJ & Performance', category: 'performance', color: 0x06b6d4,
+              desc: 'DJ mixer, beatmatching, loops, effects', features: ['Decks', 'Mixer', 'Beatmatch', 'Hot Cues'],
+              connections: ['midi_controller', 'effects_rack', 'audio_analyzer'] },
+            
+            { id: 'midi_controller', name: 'MIDI Controller', category: 'performance', color: 0x06b6d4,
+              desc: 'MIDI I/O, mapping, clock sync', features: ['MIDI In/Out', 'CC Mapping', 'MIDI Learn'],
+              connections: ['live_performance_dj'] },
+            
+            { id: 'mastering_engine', name: 'Mastering Engine', category: 'utilities', color: 0x8b5cf6,
+              desc: 'Professional mastering with 6 modes', features: ['Multi-band', 'LUFS', 'Stereo', '6 Modes'],
+              connections: ['auto_mixer', 'audio_analyzer'] },
+            
+            { id: 'audio_analyzer', name: 'Audio Analyzer', category: 'utilities', color: 0x8b5cf6,
+              desc: 'FFT spectrum, pitch, BPM, key detection', features: ['FFT', 'Pitch', 'BPM', 'Key'],
+              connections: ['stem_separator', 'music_color_cymatics', 'mastering_engine'] },
+            
+            { id: 'sample_manipulation', name: 'Sample Engine', category: 'utilities', color: 0x8b5cf6,
+              desc: 'Time stretch, pitch shift, slicing, looping', features: ['WSOLA', 'Slicing', 'Looping'],
+              connections: ['advanced_synthesis_engine', 'live_performance_dj'] },
+            
+            { id: 'auto_creator', name: 'Auto Creator', category: 'ai', color: 0x10b981,
+              desc: 'Full auto-song generation', features: ['Structure', 'Instruments', 'Mixing', 'Mastering'],
+              connections: ['neural_music_generator', 'auto_mixer', 'music_theory_engine'] }
+        ];
+        
+        // Three.js setup
+        let scene, camera, renderer, controls;
+        let moduleMeshes = [];
+        let connectionLines = [];
+        let animationId;
+        let currentView = '3d';
+        
+        function init() {
+            // Scene
+            scene = new THREE.Scene();
+            
+            // Camera
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 20, 30);
+            camera.lookAt(0, 0, 0);
+            
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+            scene.add(ambientLight);
+            
+            const pointLight = new THREE.PointLight(0xa855f7, 1, 100);
+            pointLight.position.set(10, 20, 10);
+            scene.add(pointLight);
+            
+            // Background grid
+            createGrid();
+            
+            // Create modules and connections
+            createModules();
+            createConnections();
+            
+            // Add stars
+            createStars();
+            
+            // Event listeners
+            window.addEventListener('resize', onWindowResize);
+            renderer.domElement.addEventListener('click', onMouseClick);
+            renderer.domElement.addEventListener('mousemove', onMouseMove);
+            
+            // Start animation
+            animate();
+            
+            // Hide loading
+            setTimeout(() => {
+                document.getElementById('loading').classList.add('hidden');
+            }, 1500);
+        }
+        
+        function createGrid() {
+            const gridHelper = new THREE.GridHelper(60, 60, 0x2a2a4a, 0x1a1a2e);
+            gridHelper.position.y = -10;
+            scene.add(gridHelper);
+        }
+        
+        function createStars() {
+            const starsGeometry = new THREE.BufferGeometry();
+            const starsCount = 2000;
+            const positions = new Float32Array(starsCount * 3);
+            
+            for (let i = 0; i < starsCount * 3; i += 3) {
+                positions[i] = (Math.random() - 0.5) * 200;
+                positions[i + 1] = (Math.random() - 0.5) * 100 + 20;
+                positions[i + 2] = (Math.random() - 0.5) * 200;
+            }
+            
+            starsGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            
+            const starsMaterial = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 0.5,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            const stars = new THREE.Points(starsGeometry, starsMaterial);
+            scene.add(stars);
+        }
+        
+        function createModules() {
+            const positions = getPositions(currentView);
+            
+            modules.forEach((mod, index) => {
+                const position = positions[index];
+                
+                // Main sphere
+                const geometry = new THREE.SphereGeometry(1.2, 32, 32);
+                const material = new THREE.MeshPhongMaterial({
+                    color: mod.color,
+                    emissive: mod.color,
+                    emissiveIntensity: 0.3,
+                    shininess: 100
+                });
+                
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(position.x, position.y, position.z);
+                mesh.userData = mod;
+                scene.add(mesh);
+                
+                // Glow ring
+                const ringGeometry = new THREE.TorusGeometry(1.5, 0.1, 16, 100);
+                const ringMaterial = new THREE.MeshBasicMaterial({
+                    color: mod.color,
+                    transparent: true,
+                    opacity: 0.5
+                });
+                const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+                ring.position.set(position.x, position.y, position.z);
+                ring.rotation.x = Math.PI / 2;
+                scene.add(ring);
+                
+                // Label
+                createLabel(mod.name, position, index);
+                
+                moduleMeshes.push({ mesh, ring, position: mod.position });
+            });
+        }
+        
+        function createLabel(text, position, index) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 512;
+            canvas.height = 64;
+            
+            context.fillStyle = 'rgba(0, 0, 0, 0)';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            
+            context.font = 'bold 32px Arial';
+            context.fillStyle = '#ffffff';
+            context.textAlign = 'center';
+            context.fillText(text, 256, 40);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMaterial = new THREE.SpriteMaterial({ map: texture, transparent: true });
+            const sprite = new THREE.Sprite(spriteMaterial);
+            sprite.scale.set(6, 0.75, 1);
+            sprite.position.set(position.x, position.y + 2, position.z);
+            scene.add(sprite);
+        }
+        
+        function getPositions(view) {
+            const positions = [];
+            
+            if (view === 'radial') {
+                // Concentric circles
+                const rings = [[0], [1,2,3], [4,5,6,7,8], [9,10,11,12,13,14], [15,16,17,18,19]];
+                const radiuses = [0, 5, 10, 15, 20];
+                
+                modules.forEach((mod, i) => {
+                    let ring = 0;
+                    let idx = i;
+                    
+                    for (let r = 0; r < rings.length; r++) {
+                        if (idx < rings[r].length) {
+                            ring = r;
+                            break;
+                        }
+                        idx -= rings[r].length;
+                    }
+                    
+                    const itemsInRing = rings[ring].length;
+                    const angle = (idx / itemsInRing) * Math.PI * 2;
+                    const radius = radiuses[ring];
+                    
+                    positions.push({
+                        x: Math.cos(angle) * radius,
+                        y: ring * 0.5 - 2,
+                        z: Math.sin(angle) * radius
+                    });
+                    mod.position = { x: Math.cos(angle) * radius, y: ring * 0.5 - 2, z: Math.sin(angle) * radius };
+                });
+            } else if (view === 'top') {
+                // Grid layout
+                const cols = 5;
+                const spacing = 5;
+                modules.forEach((mod, i) => {
+                    const row = Math.floor(i / cols);
+                    const col = i % cols;
+                    positions.push({
+                        x: (col - 2) * spacing,
+                        y: 0,
+                        z: (row - 2) * spacing
+                    });
+                    mod.position = { x: (col - 2) * spacing, y: 0, z: (row - 2) * spacing };
+                });
+            } else if (view === 'flow') {
+                // Left to right flow
+                modules.forEach((mod, i) => {
+                    const x = i * 2 - 20;
+                    const y = Math.sin(i * 0.5) * 3;
+                    const z = Math.cos(i * 0.3) * 3;
+                    positions.push({ x, y, z });
+                    mod.position = { x, y, z };
+                });
+            } else {
+                // 3D spiral
+                modules.forEach((mod, i) => {
+                    const angle = (i / modules.length) * Math.PI * 4;
+                    const radius = 8 + Math.sin(i * 0.5) * 5;
+                    const y = Math.sin(i * 0.3) * 4;
+                    
+                    positions.push({
+                        x: Math.cos(angle) * radius,
+                        y: y,
+                        z: Math.sin(angle) * radius
+                    });
+                    mod.position = { 
+                        x: Math.cos(angle) * radius, 
+                        y: y, 
+                        z: Math.sin(angle) * radius 
+                    };
+                });
+            }
+            
+            return positions;
+        }
+        
+        function createConnections() {
+            modules.forEach(mod => {
+                if (mod.connections) {
+                    mod.connections.forEach(targetId => {
+                        const target = modules.find(m => m.id === targetId);
+                        if (target && target.position) {
+                            createConnectionLine(mod.position, target.position, mod.color);
+                        }
+                    });
+                }
+            });
+        }
+        
+        function createConnectionLine(start, end, color) {
+            const points = [];
+            points.push(new THREE.Vector3(start.x, start.y, start.z));
+            points.push(new THREE.Vector3(end.x, end.y, end.z));
+            
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const material = new THREE.LineBasicMaterial({ 
+                color: color, 
+                transparent: true, 
+                opacity: 0.3 
+            });
+            
+            const line = new THREE.Line(geometry, material);
+            scene.add(line);
+            connectionLines.push({ line, start, end, color });
+        }
+        
+        function setView(view) {
+            currentView = view;
+            
+            const positions = getPositions(view);
+            
+            moduleMeshes.forEach((item, i) => {
+                if (positions[i]) {
+                    // Animate to new position
+                    animateToPosition(item.mesh, positions[i]);
+                    animateToPosition(item.ring, positions[i]);
+                }
+            });
+            
+            // Update buttons
+            document.querySelectorAll('.control-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.textContent.toLowerCase().includes(view)) {
+                    btn.classList.add('active');
+                }
+            });
+        }
+        
+        function animateToPosition(obj, target) {
+            const start = { x: obj.position.x, y: obj.position.y, z: obj.position.z };
+            const duration = 1000;
+            const startTime = Date.now();
+            
+            function update() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                
+                obj.position.x = start.x + (target.x - start.x) * eased;
+                obj.position.y = start.y + (target.y - start.y) * eased;
+                obj.position.z = start.z + (target.z - start.z) * eased;
+                
+                if (progress < 1) {
+                    requestAnimationFrame(update);
+                }
+            }
+            
+            update();
+        }
+        
+        function resetCamera() {
+            camera.position.set(0, 20, 30);
+            camera.lookAt(0, 0, 0);
+        }
+        
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        
+        function onMouseClick(event) {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+            
+            const objects = moduleMeshes.map(m => m.mesh);
+            const intersects = raycaster.intersectObjects(objects);
+            
+            if (intersects.length > 0) {
+                const mod = intersects[0].object.userData;
+                showModuleInfo(mod);
+            } else {
+                hideModuleInfo();
+            }
+        }
+        
+        function onMouseMove(event) {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+            
+            const objects = moduleMeshes.map(m => m.mesh);
+            const intersects = raycaster.intersectObjects(objects);
+            
+            if (intersects.length > 0) {
+                document.body.style.cursor = 'pointer';
+            } else {
+                document.body.style.cursor = 'default';
+            }
+        }
+        
+        function showModuleInfo(mod) {
+            const panel = document.getElementById('info-panel');
+            document.getElementById('info-title').textContent = mod.name;
+            document.getElementById('info-desc').textContent = mod.desc;
+            document.getElementById('info-category').textContent = mod.category;
+            
+            const featuresDiv = document.getElementById('info-features');
+            featuresDiv.innerHTML = mod.features.map(f => `<span class="info-tag">${f}</span>`).join('');
+            
+            const connectedDiv = document.getElementById('info-connected');
+            connectedDiv.innerHTML = mod.connections.map(c => {
+                const target = modules.find(m => m.id === c);
+                return `<span class="info-tag">${target ? target.name : c}</span>`;
+            }).join('');
+            
+            panel.classList.add('visible');
+        }
+        
+        function hideModuleInfo() {
+            document.getElementById('info-panel').classList.remove('visible');
+        }
+        
+        function animate() {
+            animationId = requestAnimationFrame(animate);
+            
+            // Rotate modules slowly
+            moduleMeshes.forEach((item, i) => {
+                item.ring.rotation.z += 0.005;
+                item.mesh.rotation.y += 0.01;
+            });
+            
+            // Camera rotation for 3d view
+            if (currentView === '3d') {
+                const time = Date.now() * 0.0001;
+                camera.position.x = Math.sin(time) * 35;
+                camera.position.z = Math.cos(time) * 35;
+                camera.lookAt(0, 0, 0);
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Initialize
+        init();
+    </script>
+</body>
+</html>

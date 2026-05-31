@@ -1,0 +1,80 @@
+{
+  "type": "bundle",
+  "name": "my_bundle",
+  "version": "1.0",
+  "presets": {
+    "synth_preset": {
+      "oscillators": [
+        {
+          "type": "sawtooth",
+          "detune": 5,
+          "volume": 0.8
+        },
+        {
+          "type": "square",
+          "detune": -5,
+          "volume": 0.5
+        }
+      ],
+      "filter": {
+        "type": "lowpass",
+        "cutoff": 2000,
+        "resonance": 2
+      },
+      "envelope": {
+        "attack": 0.01,
+        "decay": 0.2,
+        "sustain": 0.7,
+        "release": 0.3
+      },
+      "effects": [
+        {
+          "type": "reverb",
+          "mix": 0.3
+        }
+      ]
+    },
+    "drum_kit": {
+      "kick": {
+        "file": "kick.wav",
+        "pitch": 0,
+        "volume": 1.0
+      },
+      "snare": {
+        "file": "snare.wav",
+        "pitch": 0,
+        "volume": 0.9
+      },
+      "hihat": {
+        "file": "hihat.wav",
+        "pitch": 0,
+        "volume": 0.7
+      }
+    },
+    "effect_chain": [
+      {
+        "type": "compressor",
+        "threshold": -20,
+        "ratio": 4
+      },
+      {
+        "type": "eq",
+        "bands": [
+          {
+            "freq": 100,
+            "gain": 2
+          },
+          {
+            "freq": 1000,
+            "gain": -1
+          }
+        ]
+      },
+      {
+        "type": "reverb",
+        "room_size": 0.5,
+        "mix": 0.3
+      }
+    ]
+  }
+}

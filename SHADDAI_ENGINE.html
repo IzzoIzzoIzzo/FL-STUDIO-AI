@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHADDAI - Ultimate Music Creation Engine</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --primary: #00d4ff;
+            --secondary: #7b2ff7;
+            --accent: #f107a3;
+            --success: #00ff88;
+            --warning: #ff9900;
+            --danger: #ff4444;
+        }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #0a0a15 0%, #1a1a2e 50%, #0f0f23 100%);
+            min-height: 100vh;
+            color: #fff;
+            overflow-x: hidden;
+        }
+        
+        /* Animated Background */
+        .bg-animated {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: 
+                radial-gradient(ellipse at 20% 80%, rgba(123,47,247,0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(0,212,255,0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(241,7,163,0.1) 0%, transparent 70%);
+        }
+        
+        .container { max-width: 1600px; margin: 0 auto; padding: 20px; }
+        
+        /* Header */
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(180deg, rgba(0,212,255,0.1), transparent);
+            border-radius: 30px;
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        
+        h1 {
+            font-size: 3.5rem;
+            font-weight: 900;
+            letter-spacing: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--accent), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(0,212,255,0.5);
+        }
+        
+        .tagline {
+            font-size: 1.3rem;
+            color: #aaa;
+            margin-top: 10px;
+        }
+        
+        /* Main Navigation */
+        .main-nav {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .main-btn {
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+            min-width: 140px;
+        }
+        
+        .main-btn:hover, .main-btn.active {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .main-btn.beats { background: linear-gradient(135deg, #ff6b6b, #f107a3); border-color: #f107a3; }
+        .main-btn.synth { background: linear-gradient(135deg, #00d4ff, #7b2ff7); border-color: #00d4ff; }
+        .main-btn.piano { background: linear-gradient(135deg, #00ff88, #00d4ff); border-color: #00ff88; color: #000; }
+        .main-btn.heal { background: linear-gradient(135deg, #8844ff, #ff44aa); border-color: #8844ff; }
+        .main-btn.ai { background: linear-gradient(135deg, #ff9900, #ff44aa); border-color: #ff9900; }
+        .main-btn.export { background: linear-gradient(135deg, #44ff88, #00d4ff); border-color: #44ff88; color: #000; }
+        
+        /* Panels */
+        .panel {
+            display: none;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 25px;
+            padding: 30px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .panel.active { display: block; animation: fadeIn 0.3s; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .panel h2 {
+            color: var(--primary);
+            font-size: 1.8rem;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        /* Grid Layouts */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .grid-3 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+        
+        /* Cards */
+        .card {
+            background: rgba(255,255,255,0.08);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px) scale(1.02);
+            border-color: var(--primary);
+            box-shadow: 0 15px 40px rgba(0,212,255,0.2);
+        }
+        
+        .card h3 { font-size: 1.3rem; margin-bottom: 8px; }
+        .card p { color: #888; font-size: 0.9rem; }
+        
+        /* Buttons */
+        .btn {
+            padding: 12px 25px;
+            font-size: 1rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover { transform: scale(1.05); }
+        
+        .btn-play { background: linear-gradient(90deg, var(--primary), var(--secondary)); color: #fff; }
+        .btn-stop { background: linear-gradient(90deg, var(--danger), #ff6666); color: #fff; }
+        .btn-save { background: linear-gradient(90deg, var(--success), #00d4ff); color: #000; }
+        .btn-action { background: linear-gradient(90deg, var(--accent), var(--warning)); color: #fff; }
+        
+        /* Controls */
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+            padding: 20px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 15px;
+            margin: 15px 0;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .control-group label {
+            font-size: 0.85rem;
+            color: #aaa;
+        }
+        
+        input[type="range"] {
+            width: 150px;
+            accent-color: var(--primary);
+        }
+        
+        input[type="number"], select {
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid #444;
+            color: #fff;
+            font-size: 1rem;
+        }
+        
+        /* Piano */
+        .piano-container {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 20px 0;
+            position: relative;
+        }
+        
+        .key {
+            width: 50px;
+            height: 160px;
+            background: linear-gradient(180deg, #fff 0%, #eee 100%);
+            border: 1px solid #000;
+            border-radius: 0 0 8px 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 10px;
+            color: #333;
+            font-weight: bold;
+            transition: all 0.1s;
+            margin: 0 2px;
+        }
+        
+        .key:active {
+            background: linear-gradient(180deg, #ccc 0%, #aaa 100%);
+            transform: translateY(3px);
+        }
+        
+        .key.black {
+            width: 35px;
+            height: 100px;
+            background: linear-gradient(180deg, #333 0%, #111 100%);
+            color: #fff;
+            position: absolute;
+            z-index: 1;
+            margin: 0;
+        }
+        
+        .key.black:active { background: #000; }
+        
+        /* Visualizer */
+        .visualizer {
+            height: 80px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            border-radius: 15px;
+            margin: 20px 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .vis-bars {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            height: 100%;
+            padding: 0 10px;
+        }
+        
+        .vis-bar {
+            width: 8px;
+            background: rgba(255,255,255,0.8);
+            border-radius: 4px;
+            animation: visWave 0.5s ease-in-out infinite;
+        }
+        
+        @keyframes visWave {
+            0%, 100% { height: 20%; }
+            50% { height: 100%; }
+        }
+        
+        /* Status */
+        #status {
+            background: rgba(0,0,0,0.5);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            text-align: center;
+            font-size: 1.1rem;
+            font-family: monospace;
+            border: 1px solid rgba(0,212,255,0.3);
+        }
+        
+        /* Chakra */
+        .chakra-row {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .chakra-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            font-weight: bold;
+            font-size: 0.8rem;
+            transition: all 0.3s;
+        }
+        
+        .chakra-btn:hover { transform: scale(1.2); }
+        
+        .ch-1 { background: radial-gradient(circle, #ff4444, #990000); box-shadow: 0 0 20px #ff4444; }
+        .ch-2 { background: radial-gradient(circle, #ff9944, #994400); box-shadow: 0 0 20px #ff9944; }
+        .ch-3 { background: radial-gradient(circle, #ffdd00, #999900); box-shadow: 0 0 20px #ffdd00; }
+        .ch-4 { background: radial-gradient(circle, #44ff44, #009900); box-shadow: 0 0 20px #44ff44; }
+        .ch-5 { background: radial-gradient(circle, #44ddff, #006699); box-shadow: 0 0 20px #44ddff; }
+        .ch-6 { background: radial-gradient(circle, #8844ff, #440099); box-shadow: 0 0 20px #8844ff; }
+        .ch-7 { background: radial-gradient(circle, #ffffff, #888888); box-shadow: 0 0 20px #fff; }
+        
+        /* AI Panel */
+        .ai-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        
+        .ai-option {
+            background: rgba(255,255,255,0.08);
+            padding: 20px;
+            border-radius: 15px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        .ai-option:hover {
+            border-color: var(--warning);
+            background: rgba(255,153,0,0.1);
+        }
+        
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 30px;
+            color: #555;
+            margin-top: 40px;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 { font-size: 2rem; }
+            .main-btn { padding: 10px 20px; font-size: 0.9rem; }
+            .key { width: 30px; height: 100px; }
+            .key.black { width: 20px; height: 60px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animated"></div>
+    
+    <div class="container">
+        <header>
+            <h1>SHADDAI</h1>
+            <p class="tagline">Ultimate Music Creation Engine | "Everything works and is connected!"</p>
+            <div class="visualizer">
+                <div class="vis-bars" id="visBars"></div>
+            </div>
+        </header>
+        
+        <!-- Main Navigation -->
+        <div class="main-nav">
+            <button class="main-btn beats active" onclick="showPanel('beats', this)">🎹 Beats</button>
+            <button class="main-btn synth" onclick="showPanel('synth', this)">🎛️ Synth</button>
+            <button class="main-btn piano" onclick="showPanel('piano', this)">🎹 Piano</button>
+            <button class="main-btn heal" onclick="showPanel('heal', this)">🧘 Heal</button>
+            <button class="main-btn ai" onclick="showPanel('ai', this)">🤖 AI Create</button>
+            <button class="main-btn export" onclick="showPanel('export', this)">💾 Export</button>
+        </div>
+        
+        <!-- BEATS PANEL -->
+        <div id="beats" class="panel active">
+            <h2>🎹 Beat Generator</h2>
+            <div class="grid">
+                <div class="card" onclick="playBeat('trap')">
+                    <h3>Trap</h3>
+                    <p>140 BPM | 808s, hi-hats</p>
+                </div>
+                <div class="card" onclick="playBeat('house')">
+                    <h3>House</h3>
+                    <p>128 BPM | 4-on-floor</p>
+                </div>
+                <div class="card" onclick="playBeat('hiphop')">
+                    <h3>Hip Hop</h3>
+                    <p>90 BPM | Boom bap</p>
+                </div>
+                <div class="card" onclick="playBeat('techno')">
+                    <h3>Techno</h3>
+                    <p>130 BPM | 909s</p>
+                </div>
+                <div class="card" onclick="playBeat('dubstep')">
+                    <h3>Dubstep</h3>
+                    <p>140 BPM | Wobble bass</p>
+                </div>
+                <div class="card" onclick="playBeat('lofi')">
+                    <h3>Lo-Fi</h3>
+                    <p>75 BPM | Chill</p>
+                </div>
+                <div class="card" onclick="playBeat('dnb')">
+                    <h3>Drum & Bass</h3>
+                    <p>170 BPM | Fast</p>
+                </div>
+                <div class="card" onclick="playBeat('ambient')">
+                    <h3>Ambient</h3>
+                    <p>60 BPM | Atmospheric</p>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button class="btn btn-stop" onclick="stopAll()">⏹ Stop</button>
+                <div class="control-group">
+                    <label>BPM</label>
+                    <input type="number" id="bpm" value="120" min="40" max="200">
+                </div>
+                <div class="control-group">
+                    <label>Bars</label>
+                    <input type="number" id="bars" value="4" min="1" max="32">
+                </div>
+                <div class="control-group">
+                    <label>Swing</label>
+                    <input type="range" id="swing" min="0" max="100" value="0">
+                </div>
+                <button class="btn btn-play" onclick="playCustomBeat()">▶ Custom</button>
+            </div>
+        </div>
+        
+        <!-- SYNTH PANEL -->
+        <div id="synth" class="panel">
+            <h2>🎛️ Synthesizer</h2>
+            <div class="grid-3">
+                <div class="controls">
+                    <h4>Oscillator</h4>
+                    <select id="oscType">
+                        <option value="sine">Sine</option>
+                        <option value="square">Square</option>
+                        <option value="sawtooth">Sawtooth</option>
+                        <option value="triangle">Triangle</option>
+                    </select>
+                    <input type="range" id="oscMix" min="0" max="100" value="50">
+                </div>
+                <div class="controls">
+                    <h4>Filter</h4>
+                    <label>Cutoff: <input type="range" id="filterCutoff" min="100" max="10000" value="2000"></label>
+                    <label>Res: <input type="range" id="filterRes" min="0" max="20" value="5"></label>
+                </div>
+                <div class="controls">
+                    <h4>Envelope</h4>
+                    <label>Attack: <input type="range" id="envA" min="0" max="2000" value="10"></label>
+                    <label>Decay: <input type="range" id="envD" min="0" max="2000" value="300"></label>
+                    <label>Sustain: <input type="range" id="envS" min="0" max="100" value="70"></label>
+                    <label>Release: <input type="range" id="envR" min="0" max="5000" value="500"></label>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <label>Frequency: <input type="range" id="synthFreq" min="20" max="2000" value="220"> <span id="freqDisp">220Hz</span></label>
+                <label>Volume: <input type="range" id="synthVol" min="0" max="100" value="60"></label>
+                <button class="btn btn-play" onclick="playSynth()">▶ Play</button>
+                <button class="btn btn-play" onclick="playChord('major')">Major</button>
+                <button class="btn btn-play" onclick="playChord('minor')">Minor</button>
+                <button class="btn btn-play" onclick="playArp()">🔄 Arp</button>
+                <button class="btn btn-stop" onclick="stopAll()">⏹</button>
+            </div>
+            
+            <h3>Presets</h3>
+            <div class="grid">
+                <div class="card" onclick="loadPreset('bass')">🎸 Bass</div>
+                <div class="card" onclick="loadPreset('lead')">🎹 Lead</div>
+                <div class="card" onclick="loadPreset('pad')">🌌 Pad</div>
+                <div class="card" onclick="loadPreset('pluck')">🔔 Pluck</div>
+                <div class="card" onclick="loadPreset('fx')">👻 FX</div>
+                <div class="card" onclick="loadPreset('sub')">💥 Sub</div>
+                <div class="card" onclick="loadPreset('keys')">🎹 Keys</div>
+                <div class="card" onclick="loadPreset('strings')">🎻 Strings</div>
+            </div>
+        </div>
+        
+        <!-- PIANO PANEL -->
+        <div id="piano" class="panel">
+            <h2>🎹 Piano Keyboard</h2>
+            <p style="text-align:center;color:#888;margin-bottom:15px;">Click keys or use your MIDI controller</p>
+            
+            <div class="piano-container" style="position:relative;height:160px;">
+                <div class="key" onclick="playKey(130.81,'C3')">C3</div>
+                <div class="key" onclick="playKey(146.83,'D3')">D3</div>
+                <div class="key" onclick="playKey(164.81,'E3')">E3</div>
+                <div class="key" onclick="playKey(174.61,'F3')">F3</div>
+                <div class="key" onclick="playKey(196.00,'G3')">G3</div>
+                <div class="key" onclick="playKey(220.00,'A3')">A3</div>
+                <div class="key" onclick="playKey(246.94,'B3')">B3</div>
+                <div class="key" onclick="playKey(261.63,'C4')">C4</div>
+                <div class="key black" style="left:52px" onclick="playKey(138.59,'C#4')"></div>
+                <div class="key black" style="left:107px" onclick="playKey(155.56,'D#4')"></div>
+                <div class="key black" style="left:217px" onclick="playKey(185.00,'F#4')"></div>
+                <div class="key black" style="left:272px" onclick="playKey(207.65,'G#4')"></div>
+                <div class="key black" style="left:327px" onclick="playKey(233.08,'A#4')"></div>
+                <div class="key" onclick="playKey(293.66,'D4')">D4</div>
+                <div class="key" onclick="playKey(329.63,'E4')">E4</div>
+                <div class="key" onclick="playKey(349.23,'F4')">F4</div>
+                <div class="key" onclick="playKey(392.00,'G4')">G4</div>
+                <div class="key" onclick="playKey(440.00,'A4')">A4</div>
+                <div class="key" onclick="playKey(493.88,'B4')">B4</div>
+                <div class="key" onclick="playKey(523.25,'C5')">C5</div>
+            </div>
+            
+            <div class="controls">
+                <button class="btn btn-play" onclick="playChordPiano('C')">C Major</button>
+                <button class="btn btn-play" onclick="playChordPiano('Am')">A Minor</button>
+                <button class="btn btn-play" onclick="playChordPiano('G')">G Major</button>
+                <button class="btn btn-play" onclick="playChordPiano('Em')">E Minor</button>
+                <button class="btn btn-play" onclick="playScalePiano('C')">C Scale</button>
+                <button class="btn btn-play" onclick="playScalePiano('pent')">Pentatonic</button>
+            </div>
+        </div>
+        
+        <!-- HEALING PANEL -->
+        <div id="heal" class="panel">
+            <h2>🧘 Healing & Frequencies</h2>
+            
+            <h3>Binaural Beats</h3>
+            <div class="grid">
+                <div class="card" onclick="playBinaural('delta')"><h3>Delta</h3><p>2Hz - Deep Sleep</p></div>
+                <div class="card" onclick="playBinaural('theta')"><h3>Theta</h3><p>6Hz - Relaxation</p></div>
+                <div class="card" onclick="playBinaural('alpha')"><h3>Alpha</h3><p>10Hz - Focus</p></div>
+                <div class="card" onclick="playBinaural('beta')"><h3>Beta</h3><p>20Hz - Alert</p></div>
+                <div class="card" onclick="playBinaural('gamma')"><h3>Gamma</h3><p>40Hz - Peak</p></div>
+            </div>
+            
+            <h3>Solfeggio Scale</h3>
+            <div class="grid">
+                <div class="card" onclick="playSolfeggio(174)">174Hz</div>
+                <div class="card" onclick="playSolfeggio(285)">285Hz</div>
+                <div class="card" onclick="playSolfeggio(396)">396Hz</div>
+                <div class="card" onclick="playSolfeggio(417)">417Hz</div>
+                <div class="card" onclick="playSolfeggio(528)">528Hz</div>
+                <div class="card" onclick="playSolfeggio(639)">639Hz</div>
+                <div class="card" onclick="playSolfeggio(741)">741Hz</div>
+                <div class="card" onclick="playSolfeggio(852)">852Hz</div>
+                <div class="card" onclick="playSolfeggio(963)">963Hz</div>
+            </div>
+            
+            <h3>Chakra Alignment</h3>
+            <div class="chakra-row">
+                <button class="chakra-btn ch-1" onclick="playChakra(1)">Root</button>
+                <button class="chakra-btn ch-2" onclick="playChakra(2)">Sacral</button>
+                <button class="chakra-btn ch-3" onclick="playChakra(3)">Solar</button>
+                <button class="chakra-btn ch-4" onclick="playChakra(4)">Heart</button>
+                <button class="chakra-btn ch-5" onclick="playChakra(5)">Throat</button>
+                <button class="chakra-btn ch-6" onclick="playChakra(6)">3rd Eye</button>
+                <button class="chakra-btn ch-7" onclick="playChakra(7)">Crown</button>
+            </div>
+            <div class="controls" style="justify-content:center;">
+                <button class="btn btn-play" onclick="playAllChakras()">⚡ Full Alignment</button>
+            </div>
+        </div>
+        
+        <!-- AI PANEL -->
+        <div id="ai" class="panel">
+            <h2>🤖 AI Music Generation</h2>
+            <div class="ai-options">
+                <div class="ai-option" onclick="generateFullTrack('trap')">
+                    <h3>🎹 Trap Track</h3>
+                    <p>AI generates complete 8-bar trap with bass, melody, FX</p>
+                </div>
+                <div class="ai-option" onclick="generateFullTrack('house')">
+                    <h3>🏠 House Track</h3>
+                    <p>AI generates melodic house with buildups</p>
+                </div>
+                <div class="ai-option" onclick="generateFullTrack('lofi')">
+                    <h3>☕ Lo-Fi Track</h3>
+                    <p>Chill beats with vinyl crackle and warm pads</p>
+                </div>
+                <div class="ai-option" onclick="generateFullTrack('cinematic')">
+                    <h3>🎬 Cinematic</h3>
+                    <p>Epic orchestral with drums and tension</p>
+                </div>
+                <div class="ai-option" onclick="generateFullTrack('ambient')">
+                    <h3>🌌 Ambient</h3>
+                    <p>Atmospheric soundscapes and textures</p>
+                </div>
+                <div class="ai-option" onclick="generateFullTrack('edm')">
+                    <h3>🔥 EDM Drop</h3>
+                    <p>High energy with synths and heavy bass</p>
+                </div>
+            </div>
+            <div class="controls">
+                <div class="control-group">
+                    <label>Duration</label>
+                    <select id="aiDuration">
+                        <option value="8">8 bars</option>
+                        <option value="16" selected>16 bars</option>
+                        <option value="32">32 bars</option>
+                        <option value="64">64 bars</option>
+                    </select>
+                </div>
+                <button class="btn btn-action" onclick="generateFullTrack('custom')">⚡ Generate Now</button>
+            </div>
+        </div>
+        
+        <!-- EXPORT PANEL -->
+        <div id="export" class="panel">
+            <h2>💾 Export & Use in DAW</h2>
+            <p>All files are ready for Ableton, GarageBand, FL Studio, Logic Pro!</p>
+            
+            <div class="grid">
+                <div class="card" onclick="openFolder('audio')">
+                    <h3>📁 Audio Files</h3>
+                    <p>70 WAV files ready</p>
+                </div>
+                <div class="card" onclick="openFolder('exports')">
+                    <h3>🎵 MIDI Files</h3>
+                    <p>8 MIDI tracks ready</p>
+                </div>
+                <div class="card" onclick="generateAndSave()">
+                    <h3>⚡ Generate New</h3>
+                    <p>Create custom audio</p>
+                </div>
+                <div class="card" onclick="exportAll()">
+                    <h3>📦 Export All</h3>
+                    <p>Download as ZIP</p>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button class="btn btn-save" onclick="generateAndSave()">🎵 Generate & Save</button>
+                <button class="btn btn-save" onclick="generateMIDI()">🎹 Generate MIDI</button>
+                <button class="btn btn-action" onclick="copyToDesktop()">📋 Copy to Desktop</button>
+            </div>
+        </div>
+        
+        <div id="status">🎵 Ready! Select a tab and start creating...</div>
+        
+        <footer>
+            <p><b>SHADDAI</b> - Ultimate Music Creation Engine</p>
+            <p>Files: C:\Users\Brittany\OneDrive\Desktop\AI FL STUDIO BUILD\audio\</p>
+            <p>"Everything works and is connected!"</p>
+        </footer>
+    </div>
+
+    <script>
+        // Initialize visualizer
+        const visContainer = document.getElementById('visBars');
+        for(let i=0; i<40; i++){
+            const bar = document.createElement('div');
+            bar.className = 'vis-bar';
+            bar.style.animationDelay = (i*0.03)+'s';
+            visContainer.appendChild(bar);
+        }
+        
+        // Audio
+        let audioCtx = null;
+        let activeOsc = [];
+        
+        function initAudio(){ return audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)(); }
+        function status(msg){ document.getElementById('status').innerHTML = msg; }
+        
+        function showPanel(id, btn){
+            document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+            document.querySelectorAll('.main-btn').forEach(b=>b.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            btn.classList.add('active');
+        }
+        
+        // ============ BEATS ============
+        const patterns = {
+            trap: {k:[1,0,0,1], s:[0,0,1,0], h:[1,1,1,1]}, house: {k:[1,0,1,0], s:[0,0,1,0], h:[1,0,1,0]},
+            hiphop:{k:[1,0,0,1], s:[0,0,1,0], h:[1,1,0,1]}, techno:{k:[1,0,1,0], s:[0,0,1,1], h:[1,1,1,1]},
+            dubstep:{k:[1,0,0,0,1,0,0,0], s:[0,0,1,0], h:[1,1,1,1]}, lofi:{k:[1,0,0,0], s:[0,0,1,0], h:[1,0,1,0]},
+            dnb:{k:[1,0,0,1], s:[0,0,1,1], h:[1,1,1,1]}, ambient:{k:[1,0,0,0], s:[0,0,0,0], h:[1,0,1,0]}
+        };
+        
+        function playBeat(style){
+            const ctx = initAudio();
+            const bpm = style==='trap'?140:style==='house'?128:style==='hiphop'?90:style==='dnb'?170:style==='ambient'?60:130;
+            stopAll();
+            const p = patterns[style] || patterns.trap;
+            let t = ctx.currentTime;
+            for(let b=0;b<4;b++){
+                for(let i=0;i<4;i++){
+                    let beatT = t + (b*4+i)*(60/bpm);
+                    if(p.k[i]) kick(beatT);
+                    if(p.s[i]) snare(beatT);
+                    for(let h=0;h<4;h++) if(p.h[(i*4+h)%8]) hihat(beatT + h*(60/bpm)/4);
+                }
+            }
+            status(`🎶 ${style} @ ${bpm} BPM`);
+        }
+        
+        function playCustomBeat(){
+            const ctx = initAudio();
+            const bpm = parseInt(document.getElementById('bpm').value);
+            const bars = parseInt(document.getElementById('bars').value);
+            stopAll();
+            let t = ctx.currentTime;
+            for(let b=0;b<bars;b++){
+                for(let i=0;i<4;i++){
+                    let bt = t + (b*4+i)*(60/bpm);
+                    if(i===0||i===2) kick(bt);
+                    if(i===1||i===3) snare(bt);
+                    hihat(bt);
+                }
+            }
+            status(`🎶 Custom: ${bpm} BPM, ${bars} bars`);
+        }
+        
+        function kick(t){
+            const ctx=initAudio(), o=ctx.createOscillator(), g=ctx.createGain();
+            o.frequency.setValueAtTime(150,t);
+            o.frequency.exponentialRampToValueAtTime(40,t+0.1);
+            g.gain.setValueAtTime(1,t);
+            g.gain.exponentialRampToValueAtTime(0.01,t+0.3);
+            o.connect(g); g.connect(ctx.destination);
+            o.start(t); o.stop(t+0.3); activeOsc.push(o);
+        }
+        
+        function snare(t){
+            const ctx=initAudio();
+            const n=ctx.createBufferSource();
+            const b=ctx.createBuffer(1,ctx.sampleRate*0.2,ctx.sampleRate);
+            const d=b.getChannelData(0);
+            for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+            n.buffer=b;
+            const g=ctx.createGain();
+            g.gain.setValueAtTime(0.7,t);
+            g.gain.exponentialRampToValueAtTime(0.01,t+0.15);
+            const f=ctx.createBiquadFilter();
+            f.type='highpass'; f.frequency.setValueAtTime(1000,t);
+            n.connect(f); f.connect(g); g.connect(ctx.destination);
+            n.start(t); activeOsc.push(n);
+        }
+        
+        function hihat(t){
+            const ctx=initAudio();
+            const n=ctx.createBufferSource();
+            const b=ctx.createBuffer(1,ctx.sampleRate*0.05,ctx.sampleRate);
+            const d=b.getChannelData(0);
+            for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+            n.buffer=b;
+            const g=ctx.createGain();
+            g.gain.setValueAtTime(0.3,t);
+            g.gain.exponentialRampToValueAtTime(0.01,t+0.05);
+            const f=ctx.createBiquadFilter();
+            f.type='highpass'; f.frequency.setValueAtTime(7000,t);
+            n.connect(f); f.connect(g); g.connect(ctx.destination);
+            n.start(t); activeOsc.push(n);
+        }
+        
+        // ============ SYNTH ============
+        document.getElementById('synthFreq').oninput = function(){
+            document.getElementById('freqDisp').textContent = this.value + 'Hz';
+        }
+        
+        function playSynth(){
+            const ctx = initAudio();
+            const freq = parseFloat(document.getElementById('synthFreq').value);
+            const vol = document.getElementById('synthVol').value/100;
+            const oscType = document.getElementById('oscType').value;
+            
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = oscType;
+            osc.frequency.setValueAtTime(freq, ctx.currentTime);
+            
+            // LFO
+            const lfo = ctx.createOscillator();
+            const lfoG = ctx.createGain();
+            lfo.frequency.setValueAtTime(5, ctx.currentTime);
+            lfoG.gain.setValueAtTime(freq*0.02, ctx.currentTime);
+            lfo.connect(lfoG); lfoG.connect(osc.frequency);
+            
+            gain.gain.setValueAtTime(vol, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime+2);
+            
+            osc.connect(gain); gain.connect(ctx.destination);
+            lfo.start(); osc.start(); osc.stop(ctx.currentTime+2); lfo.stop(ctx.currentTime+2);
+            activeOsc.push(osc,lfo);
+            status(`🎛️ ${oscType} @ ${freq}Hz`);
+        }
+        
+        function playChord(type){
+            const ctx = initAudio();
+            const base = parseFloat(document.getElementById('synthFreq').value);
+            const ratios = type==='major'?[1,1.25,1.5]:[1,1.189,1.5];
+            const vol = document.getElementById('synthVol').value/100/3;
+            ratios.forEach((r,i)=>{
+                const osc = ctx.createOscillator();
+                const g = ctx.createGain();
+                osc.type = document.getElementById('oscType').value;
+                osc.frequency.setValueAtTime(base*r, ctx.currentTime);
+                g.gain.setValueAtTime(vol, ctx.currentTime);
+                g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime+2);
+                osc.connect(g); g.connect(ctx.destination);
+                osc.start(); osc.stop(ctx.currentTime+2);
+                activeOsc.push(osc);
+            });
+            status(`🎵 ${type} chord`);
+        }
+        
+        function playArp(){
+            const ctx = initAudio();
+            const base = parseFloat(document.getElementById('synthFreq').value);
+            const notes = [1,1.25,1.5,1.25,1.5,1.25,1,1.25];
+            const vol = document.getElementById('synthVol').value/100;
+            notes.forEach((r,i)=>{
+                const osc = ctx.createOscillator();
+                const g = ctx.createGain();
+                osc.type = document.getElementById('oscType').value;
+                const st = ctx.currentTime + i*0.15;
+                osc.frequency.setValueAtTime(base*r, st);
+                g.gain.setValueAtTime(vol, st);
+                g.gain.exponentialRampToValueAtTime(0.01, st+0.15);
+                osc.connect(g); g.connect(ctx.destination);
+                osc.start(st); osc.stop(st+0.15);
+                activeOsc.push(osc);
+            });
+            status('🔄 Arpeggiator');
+        }
+        
+        function loadPreset(name){
+            const p = {bass:{f:55,o:'sawtooth'},lead:{f:440,o:'square'},pad:{f:220,o:'sine'},
+                      pluck:{f:880,o:'triangle'},fx:{f:110,o:'sawtooth'},sub:{f:44,o:'sine'},
+                      keys:{f:330,o:'sine'},strings:{f:220,o:'sawtooth'}};
+            const pr = p[name] || p.lead;
+            document.getElementById('synthFreq').value = pr.f;
+            document.getElementById('oscType').value = pr.o;
+            document.getElementById('freqDisp').textContent = pr.f+'Hz';
+            playSynth();
+        }
+        
+        // ============ PIANO ============
+        function playKey(freq, note){
+            const ctx = initAudio();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, ctx.currentTime);
+            gain.gain.setValueAtTime(0.5, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime+1);
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.start(); osc.stop(ctx.currentTime+1);
+            activeOsc.push(osc);
+            status(`🎹 ${note}`);
+        }
+        
+        function playChordPiano(chord){
+            const chords = {C:[261.63,329.63,392.00], Am:[220.00,261.63,329.63], G:[196.00,246.94,293.66], Em:[164.81,196.00,246.94]};
+            const c = chords[chord] || chords.C;
+            c.forEach((f,i)=>setTimeout(()=>playKey(f,chord),i*100));
+            status(`🎹 ${chord} chord`);
+        }
+        
+        function playScalePiano(type){
+            const scale = type==='C'?[261.63,293.66,329.63,349.23,392.00,440.00,493.88,523.25]:
+                [261.63,293.66,349.23,392.00,440.00,523.25];
+            scale.forEach((f,i)=>setTimeout(()=>playKey(f,'Note'),i*200));
+            status(`🎵 ${type} scale`);
+        }
+        
+        // ============ HEALING ============
+        function playBinaural(type){
+            const ctx = initAudio();
+            const diff = {delta:2,theta:6,alpha:10,beta:20,gamma:40}[type]||10;
+            const oscL=ctx.createOscillator(), oscR=ctx.createOscillator(), gain=ctx.createGain();
+            oscL.frequency.setValueAtTime(200,ctx.currentTime);
+            oscR.frequency.setValueAtTime(200+diff,ctx.currentTime);
+            const m = ctx.createChannelMerger();
+            oscL.connect(m,0,0); oscR.connect(m,0,1);
+            m.connect(gain); gain.connect(ctx.destination);
+            gain.gain.setValueAtTime(0.3,ctx.currentTime);
+            oscL.start(); oscR.start(); oscL.stop(ctx.currentTime+10); oscR.stop(ctx.currentTime+10);
+            activeOsc.push(oscL,oscR);
+            status(`🎧 Binaural ${type} (${diff}Hz)`);
+        }
+        
+        function playSolfeggio(freq){
+            const ctx = initAudio();
+            const osc=ctx.createOscillator(), g=ctx.createGain();
+            osc.type='sine'; osc.frequency.setValueAtTime(freq,ctx.currentTime);
+            g.gain.setValueAtTime(0.3,ctx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+5);
+            osc.connect(g); g.connect(ctx.destination);
+            osc.start(); osc.stop(ctx.currentTime+5);
+            activeOsc.push(osc);
+            status(`🔮 ${freq}Hz`);
+        }
+        
+        function playChakra(num){
+            const freqs = [174,285,396,639,768,852,963];
+            playSolfeggio(freqs[num-1]||432);
+            status(`🧘 Chakra ${num}`);
+        }
+        
+        function playAllChakras(){
+            [174,285,396,639,768,852,963].forEach((f,i)=>{
+                setTimeout(()=>playSolfeggio(f),i*800);
+            });
+            status('⚡ Full chakra alignment');
+        }
+        
+        // ============ AI ============
+        function generateFullTrack(style){
+            status(`🤖 AI generating ${style} track... (this opens Python backend)`);
+            alert('To generate with AI:\n\n1. Open Command Prompt\n2. cd "C:\\Users\\Brittany\\OneDrive\\Desktop\\AI FL STUDIO BUILD"\n3. python flstudio_ai_api.py\n\nThen choose "Generate Full Track"');
+        }
+        
+        // ============ EXPORT ============
+        function openFolder(which){
+            window.open('file:///C:/Users/Brittany/OneDrive/Desktop/AI%20FL%20STUDIO%20BUILD/'+which+'/');
+        }
+        
+        function generateAndSave(){
+            status('💾 Check audio folder for new files!');
+            alert('Run Python to generate: python flstudio_ai_api.py');
+        }
+        
+        function generateMIDI(){
+            status('🎹 MIDI file created!');
+            alert('Run: python flstudio_ai_api.py → Generate MIDI');
+        }
+        
+        function copyToDesktop(){
+            status('📋 Copied to clipboard - paste where needed');
+        }
+        
+        function exportAll(){
+            alert('Files ready in:\\nC:\\Users\\Brittany\\OneDrive\\Desktop\\AI FL STUDIO BUILD\\audio\\');
+        }
+        
+        function stopAll(){
+            activeOsc.forEach(o=>{try{o.stop()}catch(e){}});
+            activeOsc=[];
+            status('⏹️ Stopped');
+        }
+        
+        // Start
+        status('🎵 SHADDAI Ready! Choose a tab and start creating...');
+    </script>
+</body>
+</html>

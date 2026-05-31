@@ -1,0 +1,11 @@
+{
+  "test_beat": {
+    "path": "audio/samples\\test_beat.wav",
+    "category": "imported",
+    "duration": 2.0,
+    "sample_rate": 44100,
+    "imported": "2026-05-02T17:30:09.536106",
+    "transients": 2,
+    "slices": {}
+  }
+}

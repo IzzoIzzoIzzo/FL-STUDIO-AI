@@ -1,0 +1,21 @@
+{
+  "type": "drum_kit",
+  "name": "my_kit",
+  "kit": {
+    "kick": {
+      "file": "kick.wav",
+      "pitch": 0,
+      "volume": 1.0
+    },
+    "snare": {
+      "file": "snare.wav",
+      "pitch": 0,
+      "volume": 0.9
+    },
+    "hihat": {
+      "file": "hihat.wav",
+      "pitch": 0,
+      "volume": 0.7
+    }
+  }
+}

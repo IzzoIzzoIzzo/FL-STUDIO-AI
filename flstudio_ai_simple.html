@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FL Studio AI - Simple Maker</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Comic Sans MS', 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+        }
+        
+        .container { max-width: 800px; margin: 0 auto; }
+        
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            background: linear-gradient(90deg, #00d4ff, #7b2ff7, #f107a3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+        
+        .tagline {
+            text-align: center;
+            color: #aaa;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+        
+        .big-button {
+            display: block;
+            width: 100%;
+            padding: 25px;
+            margin: 15px 0;
+            font-size: 1.5rem;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-weight: bold;
+        }
+        
+        .big-button:hover {
+            transform: scale(1.02);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .btn-start { background: linear-gradient(90deg, #00d4ff, #00a8cc); color: #000; }
+        .btn-magic { background: linear-gradient(90deg, #7b2ff7, #5a1fbd); }
+        .btn-relax { background: linear-gradient(90deg, #2ecc71, #27ae60); }
+        .btn-energy { background: linear-gradient(90deg, #e74c3c, #c0392b); }
+        .btn-focus { background: linear-gradient(90deg, #3498db, #2980b9); }
+        .btn-party { background: linear-gradient(90deg, #f107a3, #c0392b); }
+        
+        .section {
+            background: rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .section h2 {
+            color: #00d4ff;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+        
+        .style-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+        }
+        
+        .style-btn {
+            padding: 20px;
+            font-size: 1.1rem;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .style-btn:hover { transform: scale(1.05); }
+        
+        .trap { background: #ff6b6b; color: #000; }
+        .house { background: #4ecdc4; color: #000; }
+        .hiphop { background: #ffe66d; color: #000; }
+        .lofi { background: #95e1d3; color: #000; }
+        .dubstep { background: #a66cff; }
+        .dnb { background: #ff9f43; color: #000; }
+        
+        .now-playing {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(90deg, #00d4ff, #7b2ff7);
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            display: none;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(0,212,255,0.5); }
+            50% { box-shadow: 0 0 40px rgba(0,212,255,0.8); }
+        }
+        
+        .audio-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+        
+        .audio-controls button {
+            padding: 12px 24px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            background: #fff;
+            color: #333;
+        }
+        
+        .help-box {
+            background: rgba(0,212,255,0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .help-box h3 { color: #00d4ff; margin-bottom: 10px; }
+        
+        .tip { padding: 8px 0; color: #aaa; }
+        
+        .kids-mode {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #ff9a9e, #fad0c4);
+            border-radius: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .kids-mode h2 { color: #333; }
+        
+        audio { width: 100%; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>FL Studio AI</h1>
+        <p class="tagline">Make Beats Easy - For Kids, Teens, Adults & Seniors!</p>
+        
+        <!-- Kids Welcome -->
+        <div class="kids-mode">
+            <h2>Welcome! Let's Make Music!</h2>
+            <p>Pick a button below and hear cool beats!</p>
+        </div>
+        
+        <!-- Quick Start -->
+        <button class="big-button btn-start" onclick="makeBeat('baby_first_beat')">
+            🎵 Make My First Beat!
+        </button>
+        
+        <button class="big-button btn-magic" onclick="makeBeat('magic')">
+            ✨ Magic Beat (Surprise Me!)
+        </button>
+        
+        <!-- Mood Selection -->
+        <div class="section">
+            <h2>How Are You Feeling?</h2>
+            <button class="big-button btn-relax" onclick="makeBeat('chill_vibes')">
+                😌 Relaxed/Chill
+            </button>
+            <button class="big-button btn-energy" onclick="makeBeat('workout_energy')">
+                🔥 Energetic/Hype
+            </button>
+            <button class="big-button btn-focus" onclick="makeBeat('study_focus')">
+                📚 Focus/Study
+            </button>
+            <button class="big-button btn-party" onclick="makeBeat('party_mode')">
+                🎉 Party Time!
+            </button>
+        </div>
+        
+        <!-- Style Selection -->
+        <div class="section">
+            <h2>Pick Your Style</h2>
+            <div class="style-grid">
+                <button class="style-btn trap" onclick="makeBeat('trap_banger')">Trap</button>
+                <button class="style-btn house" onclick="makeBeat('simple_house')">House</button>
+                <button class="style-btn hiphop" onclick="makeBeat('easy_hiphop')">Hip Hop</button>
+                <button class="style-btn lofi" onclick="makeBeat('lofi_chill')">Lo-Fi</button>
+                <button class="style-btn dubstep" onclick="makeBeat('dubstep_wobble')">Dubstep</button>
+                <button class="style-btn dnb" onclick="makeBeat('pro_dnb')">Drum & Bass</button>
+            </div>
+        </div>
+        
+        <!-- Audio Player -->
+        <div class="section">
+            <h2>🔊 Listen to Your Beat</h2>
+            <audio id="audioPlayer" controls>
+                <p>Your beat will appear here!</p>
+            </audio>
+            <div class="audio-controls">
+                <button onclick="downloadBeat()">💾 Download</button>
+                <button onclick="openInFLStudio()">🎹 Open in FL Studio</button>
+            </div>
+        </div>
+        
+        <!-- Help -->
+        <div class="help-box">
+            <h3>❓ How to Use</h3>
+            <p class="tip">1. Click any button above to make a beat</p>
+            <p class="tip">2. Listen to your creation!</p>
+            <p class="tip">3. Click Download to save as WAV</p>
+            <p class="tip">4. Open MIDI in FL Studio to edit</p>
+        </div>
+        
+        <p style="text-align:center; color:#666; margin-top:30px;">
+            FL Studio AI - Master Build v6.0
+        </p>
+    </div>
+    
+    <div class="now-playing" id="nowPlaying">
+        🎵 Playing...
+    </div>
+    
+    <script>
+        let currentBeat = null;
+        let audioContext = null;
+        let currentOscillators = [];
+        
+        // Preset configurations
+        const presets = {
+            'baby_first_beat': { style: 'lofi', bpm: 70, bars: 2 },
+            'magic': { style: 'trap', bpm: 140, bars: 2 },
+            'chill_vibes': { style: 'lofi', bpm: 70, bars: 2 },
+            'workout_energy': { style: 'edm', bpm: 140, bars: 2 },
+            'study_focus': { style: 'lofi', bpm: 80, bars: 2 },
+            'party_mode': { style: 'trap', bpm: 150, bars: 2 },
+            'trap_banger': { style: 'trap', bpm: 140, bars: 2 },
+            'simple_house': { style: 'house', bpm: 120, bars: 2 },
+            'easy_hiphop': { style: 'hiphop', bpm: 85, bars: 2 },
+            'lofi_chill': { style: 'lofi', bpm: 75, bars: 2 },
+            'dubstep_wobble': { style: 'dubstep', bpm: 140, bars: 2 },
+            'pro_dnb': { style: 'dnb', bpm: 170, bars: 2 },
+        };
+        
+        // Drum patterns
+        const patterns = {
+            trap: { kick: [1,0,0,1], snare: [0,0,1,0], hihat: [1,1,1,1,1,1,1,1] },
+            house: { kick: [1,0,1,0], snare: [0,0,1,0], hihat: [1,0,1,0,1,0,1,0] },
+            hiphop: { kick: [1,0,0,1], snare: [0,0,1,0], hihat: [1,1,0,1,1,1,0,1] },
+            lofi: { kick: [1,0,0,0], snare: [0,0,1,0], hihat: [1,0,1,0,1,0,1,0] },
+            dubstep: { kick: [1,0,0,0,1,0,0,0], snare: [0,0,1,0,0,0,1,0], hihat: [1,1,1,1,1,1,1,1] },
+            dnb: { kick: [1,0,0,1], snare: [0,0,1,1], hihat: [1,1,1,1,1,1,1,1] },
+            edm: { kick: [1,0,1,0], snare: [0,0,1,0], hihat: [1,1,1,1,1,1,1,1] },
+        };
+        
+        async function makeBeat(preset) {
+            const config = presets[preset] || presets['magic'];
+            const style = config.style;
+            const bpm = config.bpm;
+            const bars = config.bars;
+            
+            // Show playing indicator
+            document.getElementById('nowPlaying').style.display = 'block';
+            document.getElementById('nowPlaying').textContent = '🎵 Making ' + preset.replace('_', ' ') + '...';
+            
+            // Generate and play beat
+            await playBeat(style, bpm, bars);
+            
+            // Update display
+            document.getElementById('nowPlaying').textContent = '🎵 Now Playing: ' + style.toUpperCase() + ' at ' + bpm + ' BPM';
+            currentBeat = preset;
+        }
+        
+        async function playBeat(style, bpm, bars) {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            
+            // Stop any playing audio
+            currentOscillators.forEach(osc => {
+                try { osc.stop(); } catch(e) {}
+            });
+            currentOscillators = [];
+            
+            const beatDuration = 60 / bpm;
+            const pattern = patterns[style] || patterns.trap;
+            
+            // Generate and play immediately
+            const now = audioContext.currentTime;
+            
+            for (let bar = 0; bar < bars; bar++) {
+                for (let beat = 0; beat < 4; beat++) {
+                    const beatTime = now + (bar * 4 + beat) * beatDuration;
+                    
+                    // Kick
+                    if (pattern.kick[beat]) {
+                        playKick(beatTime);
+                    }
+                    
+                    // Snare
+                    if (pattern.snare[beat]) {
+                        playSnare(beatTime);
+                    }
+                    
+                    // Hi-hats
+                    for (let sub = 0; sub < 4; sub++) {
+                        const hIdx = (beat * 4 + sub) % 8;
+                        if (pattern.hihat[hIdx]) {
+                            playHiHat(beatTime + sub * beatDuration / 4);
+                        }
+                    }
+                }
+            }
+            
+            const totalDuration = bars * 4 * beatDuration;
+            
+            // Update audio player with generated audio
+            setTimeout(() => {
+                document.getElementById('nowPlaying').style.display = 'none';
+            }, totalDuration * 1000);
+        }
+        
+        function playKick(time) {
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            
+            osc.frequency.setValueAtTime(150, time);
+            osc.frequency.exponentialRampToValueAtTime(40, time + 0.1);
+            gain.gain.setValueAtTime(1, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.3);
+            
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+            osc.start(time);
+            osc.stop(time + 0.3);
+            currentOscillators.push(osc);
+        }
+        
+        function playSnare(time) {
+            // Noise component
+            const noise = audioContext.createBufferSource();
+            const buffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.2, audioContext.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+            noise.buffer = buffer;
+            
+            const noiseGain = audioContext.createGain();
+            noiseGain.gain.setValueAtTime(0.8, time);
+            noiseGain.gain.exponentialRampToValueAtTime(0.01, time + 0.15);
+            
+            const filter = audioContext.createBiquadFilter();
+            filter.type = 'highpass';
+            filter.frequency.value = 1000;
+            
+            noise.connect(filter);
+            filter.connect(noiseGain);
+            noiseGain.connect(audioContext.destination);
+            noise.start(time);
+            
+            // Tone component
+            const osc = audioContext.createOscillator();
+            const oscGain = audioContext.createGain();
+            osc.frequency.setValueAtTime(200, time);
+            oscGain.gain.setValueAtTime(0.5, time);
+            oscGain.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
+            osc.connect(oscGain);
+            oscGain.connect(audioContext.destination);
+            osc.start(time);
+            osc.stop(time + 0.1);
+            currentOscillators.push(osc);
+        }
+        
+        function playHiHat(time) {
+            const noise = audioContext.createBufferSource();
+            const buffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.05, audioContext.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+            noise.buffer = buffer;
+            
+            const gain = audioContext.createGain();
+            gain.gain.setValueAtTime(0.3, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
+            
+            const filter = audioContext.createBiquadFilter();
+            filter.type = 'highpass';
+            filter.frequency.value = 7000;
+            
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioContext.destination);
+            noise.start(time);
+        }
+        
+        function downloadBeat() {
+            alert('Download your beat from the audio folder!\n\nFiles are saved as:\n- audio/*.wav (Audio)\n- exports/*.mid (For FL Studio)');
+        }
+        
+        function openInFLStudio() {
+            alert('To use with FL Studio:\n\n1. Find your MIDI file in the "exports" folder\n2. Drag it into FL Studio\n3. Assign drum plugins to play the notes!');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "type": "synth",
+  "name": "debug_test",
+  "oscillators": [],
+  "filter": {},
+  "envelope": {},
+  "effects": [],
+  "lfo": {}
+}
