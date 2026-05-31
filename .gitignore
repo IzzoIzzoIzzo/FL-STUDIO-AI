@@ -25,12 +25,19 @@ Thumbs.db
 .DS_Store
 Desktop.ini
 
-# Audio / MIDI exports (generated)
+# Audio / MIDI / generated media
+audio/
 exports/
 *.wav
 *.mp3
+*.ogg
+*.flac
+*.aiff
 *.mid
 *.midi
+*.json
+
+# Keep reference MIDI files
 !beat.mid
 !export_test.mid
 !test.mid
