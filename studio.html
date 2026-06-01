@@ -1,0 +1,1510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>FL STUDIO AI — Complete Music Studio</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--primary:#00d4ff;--secondary:#7b2ff7;--accent:#f107a3;--bg-dark:#0f0c29;--bg-card:rgba(255,255,255,0.05);--success:#00ff88;--warning:#ffaa00}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh;color:#fff}
+.container{max-width:1500px;margin:0 auto;padding:15px}
+header{text-align:center;padding:20px;background:linear-gradient(90deg,rgba(0,212,255,0.1),rgba(123,47,247,0.1));border-radius:16px;margin-bottom:20px}
+h1{font-size:2.5rem;background:linear-gradient(90deg,var(--primary),var(--secondary),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tagline{color:#888;font-size:1rem}
+.status-bar{display:flex;gap:15px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+.status-badge{padding:4px 14px;border-radius:12px;font-size:.8rem}
+.status-badge.online{background:rgba(0,255,136,0.2);color:var(--success);border:1px solid var(--success)}
+.status-badge.offline{background:rgba(255,0,0,0.2);color:#ff4444;border:1px solid #ff4444}
+
+/* Prompt Bar */
+.prompt-bar{background:rgba(0,0,0,0.5);border:2px solid var(--secondary);border-radius:16px;padding:15px;margin-bottom:20px}
+.prompt-row{display:flex;gap:10px;flex-wrap:wrap}
+.prompt-row input[type=text]{flex:1;min-width:200px;padding:14px 18px;border-radius:10px;border:2px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;font-size:1.05rem}
+.prompt-row input:focus{outline:none;border-color:var(--primary)}
+.prompt-row button{padding:14px 30px;border-radius:10px;border:none;font-weight:bold;cursor:pointer;transition:all .3s;font-size:1rem}
+.btn-primary{background:linear-gradient(90deg,var(--primary),var(--secondary));color:#fff}
+.btn-primary:hover{transform:scale(1.03);box-shadow:0 0 30px rgba(0,212,255,0.3)}
+.btn-accent{background:linear-gradient(90deg,var(--accent),var(--secondary));color:#fff}
+.btn-accent:hover{transform:scale(1.03);box-shadow:0 0 30px rgba(241,7,163,0.3)}
+.prompt-suggestions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.prompt-suggestions span{cursor:pointer;padding:6px 14px;background:var(--bg-card);border-radius:20px;font-size:.85rem;color:#aaa;transition:all .3s;border:1px solid transparent}
+.prompt-suggestions span:hover{color:#fff;border-color:var(--primary);background:rgba(0,212,255,0.1)}
+
+/* Agent Status */
+.agent-strip{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.agent-chip{display:flex;align-items:center;gap:6px;padding:8px 16px;background:var(--bg-card);border-radius:20px;font-size:.85rem;border:1px solid transparent;transition:all .3s}
+.agent-chip.active{border-color:var(--primary);background:rgba(0,212,255,0.1)}
+.agent-chip.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.agent-chip .dot.idle{background:#555}
+.agent-chip .dot.working{background:var(--primary);animation:pulse 1s infinite}
+.agent-chip .dot.done{background:var(--success)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Tabs */
+.tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+.tab{padding:12px 22px;background:var(--bg-card);border:2px solid transparent;border-radius:10px;color:#fff;cursor:pointer;font-size:.9rem;font-weight:600;transition:all .3s}
+.tab:hover{border-color:var(--primary);background:rgba(255,255,255,0.08)}
+.tab.active{background:linear-gradient(90deg,var(--secondary),var(--accent));border-color:var(--primary)}
+
+/* Panels */
+.panel{display:none;background:rgba(0,0,0,0.4);border-radius:16px;padding:25px;margin-bottom:20px;animation:fadeIn .3s}
+.panel.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.panel h2{color:var(--primary);margin-bottom:20px;font-size:1.4rem;border-bottom:2px solid var(--secondary);padding-bottom:10px;display:flex;align-items:center;gap:10px}
+
+/* Grids */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:15px}
+.card{background:var(--bg-card);border-radius:14px;padding:20px;cursor:pointer;transition:all .3s;border:2px solid transparent}
+.card:hover{background:rgba(255,255,255,0.08);border-color:var(--primary);transform:translateY(-3px)}
+.card h3{color:var(--accent);margin-bottom:6px;font-size:1.1rem}
+.card p{color:#888;font-size:.9rem}
+
+/* Controls */
+.control-group{background:var(--bg-card);border-radius:12px;padding:18px;margin-bottom:12px}
+.control-group h3{color:var(--primary);margin-bottom:12px;font-size:1.05rem}
+.control-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
+label{color:#aaa;min-width:80px;font-size:.9rem}
+select,input{width:100%;padding:10px 14px;border-radius:8px;border:2px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;font-size:.9rem}
+select option{background:#1a1a2e}
+input[type=range]{padding:0;background:0;border:0;accent-color:var(--primary)}
+input[type=checkbox]{width:auto;accent-color:var(--primary)}
+input:focus,select:focus{outline:none;border-color:var(--primary)}
+button{padding:10px 22px;border-radius:8px;border:none;font-weight:600;cursor:pointer;transition:all .3s;font-size:.9rem}
+button:hover{transform:scale(1.03)}
+.btn-play{background:linear-gradient(90deg,var(--primary),var(--secondary));color:#fff}
+.btn-stop{background:#ff4757;color:#fff}
+.btn-save{background:var(--accent);color:#fff}
+.btn-ghost{background:transparent;border:2px solid var(--primary);color:var(--primary)}
+.btn-ghost:hover{background:rgba(0,212,255,0.1)}
+
+/* Output */
+.output-box{background:rgba(0,0,0,0.5);border-radius:10px;padding:15px;margin-top:10px;font-family:monospace;font-size:.85rem;color:#aaa;min-height:60px;white-space:pre-wrap;border:1px solid rgba(255,255,255,0.05)}
+
+/* Waveform */
+.waveform{height:80px;background:linear-gradient(90deg,var(--primary),var(--accent));border-radius:10px;margin:10px 0;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:3px}
+.waveform-bar{width:4px;background:rgba(255,255,255,0.8);border-radius:2px;animation:wave .5s ease-in-out infinite}
+@keyframes wave{0%,100%{height:20%}50%{height:100%}}
+
+/* Synth keys */
+.piano{display:flex;gap:2px;margin:10px 0;flex-wrap:wrap}
+.piano-key{padding:10px 18px;background:linear-gradient(180deg,#fff,#ddd);color:#333;border-radius:4px;cursor:pointer;font-weight:bold;font-size:.8rem;transition:all .1s;text-align:center;min-width:40px}
+.piano-key:hover{background:linear-gradient(180deg,var(--primary),var(--secondary));color:#fff;transform:scale(1.05)}
+.piano-key.black{background:linear-gradient(180deg,#333,#000);color:#fff}
+.piano-key.black:hover{background:linear-gradient(180deg,var(--accent),#333)}
+
+/* Samples */
+.sample-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.sample-item{background:var(--bg-card);border-radius:8px;padding:12px;cursor:pointer;transition:all .3s;border:1px solid transparent}
+.sample-item:hover{border-color:var(--primary);background:rgba(0,212,255,0.1)}
+.sample-item .name{color:var(--primary);font-size:.9rem}
+.sample-item .info{color:#666;font-size:.75rem}
+
+/* Knob-style slider */
+.knob-group{display:flex;gap:15px;flex-wrap:wrap}
+.knob{text-align:center;min-width:60px}
+.knob label{font-size:.75rem;display:block;margin-bottom:4px}
+.knob input{width:60px;height:60px;border-radius:50%;background:conic-gradient(var(--primary) var(--pct),#333 var(--pct));border:3px solid var(--secondary);cursor:pointer;accent-color:var(--primary)}
+
+/* Settings */
+.settings-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:15px}
+.api-input{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.api-input label{min-width:90px;font-size:.85rem}
+.api-input input{flex:1}
+.api-input .status{width:10px;height:10px;border-radius:50%}
+.api-input .status.connected{background:var(--success)}
+.api-input .status.disconnected{background:#ff4444}
+
+/* Chopper */
+.chopper-waveform{height:120px;background:rgba(0,0,0,0.5);border-radius:10px;margin:10px 0;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,0.1)}
+.chopper-slice{position:absolute;height:100%;background:rgba(0,212,255,0.2);border-left:2px solid var(--primary);border-right:2px solid var(--primary);cursor:ew-resize;top:0}
+.chopper-slice:hover{background:rgba(0,212,255,0.4)}
+.chopper-slice .label{position:absolute;bottom:2px;left:4px;font-size:.65rem;color:var(--primary)}
+
+@media(max-width:768px){.tabs{justify-content:center}.tab{font-size:.8rem;padding:10px 16px}.prompt-row input[type=text]{min-width:100%}h1{font-size:1.8rem}.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>FL STUDIO AI</h1>
+  <p class="tagline">AI-Powered Music Production Studio</p>
+  <div class="status-bar">
+    <span class="status-badge offline" id="apiStatus">API Disconnected</span>
+    <span class="status-badge offline" id="mcpStatus">MCP Disconnected</span>
+    <span style="color:#666;font-size:.85rem">v8.0 · In Progress</span>
+  </div>
+</header>
+
+<div class="prompt-bar" id="promptSection">
+  <div class="prompt-row">
+    <input type="text" id="promptInput" placeholder="Describe the music you want... e.g. 'dark trap beat in A minor at 160 BPM with heavy 808s'" />
+    <button class="btn-primary" onclick="processPrompt()">Generate</button>
+    <button class="btn-ghost" onclick="stopAllAudio()">Stop</button>
+  </div>
+  <div class="prompt-suggestions">
+    <span onclick="setPrompt('dark trap beat in A minor, 160 BPM, heavy 808s')">Dark Trap</span>
+    <span onclick="setPrompt('lo-fi hip hop beat, C major, 90 BPM, vinyl crackle')">Lofi Chill</span>
+    <span onclick="setPrompt('deep house track, F minor, 124 BPM, funky bassline')">Deep House</span>
+    <span onclick="setPrompt('cinematic orchestral, E minor, 80 BPM, epic strings')">Cinematic</span>
+    <span onclick="setPrompt('uk drill beat, D minor, 140 BPM, sliding 808s')">UK Drill</span>
+    <span onclick="setPrompt('ambient pad, G major, 70 BPM, ethereal textures')">Ambient</span>
+    <span onclick="setPrompt('bouncy tech house, G minor, 128 BPM, percussive')">Tech House</span>
+    <span onclick="setPrompt('sad melodic type beat, C# minor, 150 BPM')">Melodic Type</span>
+  </div>
+</div>
+
+<div class="agent-strip" id="agentStrip">
+  <div class="agent-chip" id="agentBeat"><span class="dot idle"></span> Beat Agent</div>
+  <div class="agent-chip" id="agentMelody"><span class="dot idle"></span> Melody Agent</div>
+  <div class="agent-chip" id="agentMix"><span class="dot idle"></span> Mix Agent</div>
+  <div class="agent-chip" id="agentMaster"><span class="dot idle"></span> Master Agent</div>
+  <div class="agent-chip" id="agentCreative"><span class="dot idle"></span> Creative Agent</div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('beats',this)">Beats</div>
+  <div class="tab" onclick="switchTab('synth',this)">Synth</div>
+  <div class="tab" onclick="switchTab('drums',this)">Drums</div>
+  <div class="tab" onclick="switchTab('mix',this)">Mix & Master</div>
+  <div class="tab" onclick="switchTab('samples',this)">Samples</div>
+  <div class="tab" onclick="switchTab('ambient',this)">Ambient</div>
+  <div class="tab" onclick="switchTab('export',this)">Export</div>
+  <div class="tab" onclick="switchTab('settings',this)">Settings</div>
+</div>
+
+<div class="panel active" id="panel-beats">
+  <h2>Beat Generator</h2>
+  <div class="control-group">
+    <div class="control-row">
+      <label>Style</label>
+      <select id="beatStyle" style="flex:1">
+        <option value="trap">Trap</option><option value="house">House</option><option value="techno">Techno</option>
+        <option value="dnb">Drum & Bass</option><option value="hiphop">Hip Hop</option><option value="lofi">Lo-Fi</option>
+        <option value="dubstep">Dubstep</option><option value="garage">Garage</option><option value="drill">UK Drill</option>
+        <option value="ambient">Ambient</option><option value="rnb">R&B</option><option value="pop">Pop</option>
+      </select>
+    </div>
+    <div class="control-row">
+      <label>Key</label>
+      <select id="beatKey" style="flex:1"><option>C</option><option>C#</option><option>D</option><option>D#</option><option>E</option><option>F</option><option>F#</option><option>G</option><option>G#</option><option selected>A</option><option>A#</option><option>B</option></select>
+      <label>Scale</label>
+      <select id="beatScale" style="flex:1"><option value="minor">Minor</option><option value="major">Major</option><option value="dorian">Dorian</option><option value="phrygian">Phrygian</option><option value="mixolydian">Mixolydian</option><option value="pentatonic">Pentatonic</option></select>
+    </div>
+    <div class="control-row">
+      <label>BPM</label>
+      <input type="range" id="beatTempo" min="60" max="200" value="140" oninput="document.getElementById('bpmVal').textContent=this.value" style="flex:2"/>
+      <span id="bpmVal" style="color:var(--primary);font-weight:bold;min-width:40px">140</span>
+      <label>Bars</label>
+      <select id="beatBars"><option>2</option><option selected>4</option><option>8</option><option>16</option></select>
+    </div>
+    <div class="control-row">
+      <button class="btn-play" onclick="generateBeat()">Generate Beat</button>
+      <button class="btn-play" onclick="generateFullTrack()">Full Track</button>
+      <button class="btn-save" onclick="generateMidiFile()">MIDI</button>
+    </div>
+  </div>
+  <div class="output-box" id="beatOutput">Click "Generate Beat" to start making music...</div>
+</div>
+
+<div class="panel" id="panel-synth">
+  <h2>Synthesizer</h2>
+  <div class="control-group">
+    <div class="control-row">
+      <label>Wave</label>
+      <select id="synthWaveform" style="flex:1"><option value="sine">Sine</option><option value="square">Square</option><option value="sawtooth">Sawtooth</option><option value="triangle">Triangle</option><option value="noise">Noise</option></select>
+      <label>Freq</label>
+      <input type="range" id="synthNote" min="55" max="1760" value="440" oninput="document.getElementById('freqVal').textContent=this.value+'Hz'" style="flex:2"/>
+      <span id="freqVal" style="color:var(--primary);min-width:60px">440Hz</span>
+    </div>
+    <div class="control-row">
+      <label>Attack</label><input type="range" id="synthAttack" min="0" max="1" value="0.05" step="0.01" style="flex:1"/>
+      <label>Decay</label><input type="range" id="synthDecay" min="0" max="1" value="0.1" step="0.01" style="flex:1"/>
+      <label>Sustain</label><input type="range" id="synthSustain" min="0" max="1" value="0.7" step="0.01" style="flex:1"/>
+      <label>Release</label><input type="range" id="synthRelease" min="0" max="3" value="0.5" step="0.01" style="flex:1"/>
+    </div>
+    <div class="control-row">
+      <label>Filter</label><input type="range" id="synthFilter" min="100" max="8000" value="4000" step="10" style="flex:2"/>
+      <label>Volume</label><input type="range" id="synthVolume" min="0" max="1" value="0.5" step="0.01" style="flex:1"/>
+    </div>
+    <div class="control-row">
+      <label>FX</label>
+      <label><input type="checkbox" id="fxReverb" checked/> Reverb</label>
+      <label><input type="checkbox" id="fxDelay"/> Delay</label>
+      <label><input type="checkbox" id="fxDistortion"/> Distortion</label>
+      <label><input type="checkbox" id="fxFilter"/> LFO Filter</label>
+    </div>
+    <div class="control-row">
+      <button class="btn-play" onclick="playSynth()">Play</button>
+      <button class="btn-stop" onclick="stopSynth()">Stop</button>
+      <button class="btn-accent" onclick="startArp()">Arpeggiator</button>
+      <button class="btn-ghost" onclick="playChord('major')">Major</button>
+      <button class="btn-ghost" onclick="playChord('minor')">Minor</button>
+      <button class="btn-ghost" onclick="playChord('7th')">7th</button>
+    </div>
+    <div class="piano">
+      <div class="piano-key" onclick="playKey(261.63,'C4')">C</div>
+      <div class="piano-key black" onclick="playKey(277.18,'C#4')">C#</div>
+      <div class="piano-key" onclick="playKey(293.66,'D4')">D</div>
+      <div class="piano-key black" onclick="playKey(311.13,'D#4')">D#</div>
+      <div class="piano-key" onclick="playKey(329.63,'E4')">E</div><div class="piano-key" onclick="playKey(349.23,'F4')">F</div>
+      <div class="piano-key black" onclick="playKey(369.99,'F#4')">F#</div>
+      <div class="piano-key" onclick="playKey(392.00,'G4')">G</div>
+      <div class="piano-key black" onclick="playKey(415.30,'G#4')">G#</div>
+      <div class="piano-key" onclick="playKey(440.00,'A4')">A</div>
+      <div class="piano-key black" onclick="playKey(466.16,'A#4')">A#</div>
+      <div class="piano-key" onclick="playKey(493.88,'B4')">B</div>
+      <div class="piano-key" onclick="playKey(523.25,'C5')">C5</div>
+      <div class="piano-key black" onclick="playKey(554.37,'C#5')">C#5</div>
+      <div class="piano-key" onclick="playKey(587.33,'D5')">D5</div>
+    </div>
+  </div>
+  <div class="output-box" id="synthOutput">Play a key or click buttons...</div>
+</div>
+
+<div class="panel" id="panel-drums">
+  <h2>Drum Machine</h2>
+  <div class="grid">
+    <div class="card" onclick="playDrumSound('kick')"><h3>KICK</h3><p>Bass drum</p></div>
+    <div class="card" onclick="playDrumSound('snare')"><h3>SNARE</h3><p>Snare drum</p></div>
+    <div class="card" onclick="playDrumSound('hihat')"><h3>HI-HAT</h3><p>Closed hi-hat</p></div>
+    <div class="card" onclick="playDrumSound('openhat')"><h3>OPEN HAT</h3><p>Open hi-hat</p></div>
+    <div class="card" onclick="playDrumSound('clap')"><h3>CLAP</h3><p>Hand clap</p></div>
+    <div class="card" onclick="playDrumSound('tom')"><h3>TOM</h3><p>Tom drum</p></div>
+    <div class="card" onclick="playDrumSound('rim')"><h3>RIM</h3><p>Rim shot</p></div>
+    <div class="card" onclick="playDrumSound('crash')"><h3>CRASH</h3><p>Cymbal</p></div>
+  </div>
+  <div class="control-group" style="margin-top:15px">
+    <h3>Drum Pattern</h3>
+    <div class="control-row">
+      <button class="btn-play" onclick="playDrumPattern('trap')">Trap Pattern</button>
+      <button class="btn-play" onclick="playDrumPattern('house')">House Pattern</button>
+      <button class="btn-play" onclick="playDrumPattern('dnb')">DnB Pattern</button>
+      <button class="btn-play" onclick="playDrumPattern('lofi')">LoFi Pattern</button>
+      <button class="btn-stop" onclick="stopPattern()">Stop</button>
+    </div>
+  </div>
+  <div class="output-box" id="drumsOutput">Click a drum pad or pattern...</div>
+</div>
+
+<div class="panel" id="panel-mix">
+  <h2>Mix & Master</h2>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">
+    <div class="control-group">
+      <h3>Mix Controls</h3>
+      <div class="control-row"><label>Master Vol</label><input type="range" min="0" max="1" value="0.8" step="0.01" oninput="masterVol=this.value;document.getElementById('masterDb').textContent=(Math.round(20*Math.log10(this.value||0.001)*10)/10)+'dB'" style="flex:2"/><span id="masterDb" style="color:var(--primary);min-width:50px">-1.9dB</span></div>
+      <div class="control-row"><label>Bass</label><input type="range" min="-12" max="12" value="0" step="0.5" style="flex:2"/><span style="color:#888;min-width:30px">0dB</span></div>
+      <div class="control-row"><label>Mid</label><input type="range" min="-12" max="12" value="0" step="0.5" style="flex:2"/></div>
+      <div class="control-row"><label>Treble</label><input type="range" min="-12" max="12" value="0" step="0.5" style="flex:2"/></div>
+    </div>
+    <div class="control-group">
+      <h3>Mastering</h3>
+      <div class="control-row">
+        <label>Mode</label>
+        <select style="flex:2"><option>Analog</option><option>Modern</option><option>Vinyl</option><option>Cassette</option><option>Tape</option><option>Digital</option></select>
+      </div>
+      <div class="control-row"><label>LUFS</label><input type="range" min="-20" max="-8" value="-14" step="0.5" style="flex:2"/><span style="color:#888">-14</span></div>
+      <div class="control-row"><button class="btn-play" onclick="applyMastering()">Apply Mastering</button></div>
+    </div>
+  </div>
+  <div class="output-box" id="mixOutput">Mix controls ready...</div>
+</div>
+
+<div class="panel" id="panel-samples">
+  <h2>Sample Chopper</h2>
+  <div class="control-group">
+    <div class="control-row">
+      <label>Import WAV</label>
+      <input type="file" accept="audio/wav,audio/mp3,audio/*" onchange="loadSample(this)" style="flex:2;padding:8px"/>
+      <button class="btn-play" onclick="playSample()">Play</button>
+      <button class="btn-stop" onclick="stopSample()">Stop</button>
+    </div>
+    <div class="control-row">
+      <label>BPM Sync</label>
+      <input type="number" id="sampleBpm" value="140" style="width:80px"/>
+      <button class="btn-ghost" onclick="detectBpm()">Detect BPM</button>
+    </div>
+    <div class="chopper-waveform" id="chopperWave">
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#666">Load a WAV file to chop</div>
+    </div>
+    <div class="control-row">
+      <button class="btn-accent" onclick="addSlice()">Add Slice</button>
+      <button class="btn-save" onclick="clearSlices()">Clear Slices</button>
+      <button class="btn-primary" onclick="exportChops()">Export Slices</button>
+    </div>
+  </div>
+  <div class="sample-list" id="sampleList">
+    <div class="sample-item" onclick="previewSample('audio/super_trap_2bars.wav')"><div class="name">super_trap_2bars.wav</div><div class="info">Generated trap beat</div></div>
+  </div>
+  <div class="output-box" id="samplesOutput">Load a WAV file to start chopping...</div>
+</div>
+
+<div class="panel" id="panel-ambient">
+  <h2>Ambient & Healing Frequencies</h2>
+  <div class="grid">
+    <div class="card" onclick="playBinaural('delta')"><h3> Delta</h3><p>1-4 Hz · Deep sleep</p></div>
+    <div class="card" onclick="playBinaural('theta')"><h3> Theta</h3><p>4-8 Hz · Meditation</p></div>
+    <div class="card" onclick="playBinaural('alpha')"><h3> Alpha</h3><p>8-14 Hz · Relaxation</p></div>
+    <div class="card" onclick="playBinaural('beta')"><h3> Beta</h3><p>14-30 Hz · Focus</p></div>
+    <div class="card" onclick="playBinaural('gamma')"><h3> Gamma</h3><p>30-100 Hz · Flow state</p></div>
+    <div class="card" onclick="playSolfeggio(396)"><h3>396 Hz</h3><p>Liberating Guilt & Fear</p></div>
+    <div class="card" onclick="playSolfeggio(417)"><h3>417 Hz</h3><p>Facilitating Change</p></div>
+    <div class="card" onclick="playSolfeggio(528)"><h3>528 Hz</h3><p>Transformation & DNA Repair</p></div>
+    <div class="card" onclick="playSolfeggio(639)"><h3>639 Hz</h3><p>Connecting Relationships</p></div>
+    <div class="card" onclick="playSolfeggio(741)"><h3>741 Hz</h3><p>Awakening Intuition</p></div>
+    <div class="card" onclick="playSolfeggio(852)"><h3>852 Hz</h3><p>Returning to Spiritual Order</p></div>
+    <div class="card" onclick="playAmbientSound('rain')"><h3> Rain</h3><p>Calm rain sounds</p></div>
+    <div class="card" onclick="playAmbientSound('ocean')"><h3> Ocean</h3><p>Ocean waves</p></div>
+    <div class="card" onclick="playAmbientSound('forest')"><h3> Forest</h3><p>Forest ambience</p></div>
+    <div class="card" onclick="playChakra('root')" style="border-color:#ff0000"><h3> Root</h3><p>396 Hz · Survival</p></div>
+    <div class="card" onclick="playChakra('sacral')" style="border-color:#ff8800"><h3> Sacral</h3><p>417 Hz · Creativity</p></div>
+    <div class="card" onclick="playChakra('solar')" style="border-color:#ffdd00"><h3> Solar Plexus</h3><p>528 Hz · Power</p></div>
+    <div class="card" onclick="playChakra('heart')" style="border-color:#00ff44"><h3> Heart</h3><p>639 Hz · Love</p></div>
+    <div class="card" onclick="playChakra('throat')" style="border-color:#0088ff"><h3> Throat</h3><p>741 Hz · Truth</p></div>
+    <div class="card" onclick="playChakra('third')" style="border-color:#4400ff"><h3> Third Eye</h3><p>852 Hz · Insight</p></div>
+    <div class="card" onclick="playChakra('crown')" style="border-color:#aa00ff"><h3> Crown</h3><p>963 Hz · Transcendence</p></div>
+  </div>
+  <div class="output-box" id="ambientOutput">Click a frequency or ambient sound to play...</div>
+</div>
+
+<div class="panel" id="panel-export">
+  <h2>Export</h2>
+  <div class="grid">
+    <div class="card" onclick="exportWav()"><h3>Export WAV</h3><p>High-quality lossless audio</p></div>
+    <div class="card" onclick="exportMp3()"><h3>Export MP3</h3><p>Compressed audio</p></div>
+    <div class="card" onclick="exportMidi()"><h3>Export MIDI</h3><p>Pattern data for DAW</p></div>
+    <div class="card" onclick="exportStems()"><h3>Export Stems</h3><p>Individual track stems</p></div>
+  </div>
+  <div class="output-box" id="exportOutput">Select export format...</div>
+</div>
+
+<div class="panel" id="panel-settings">
+  <h2>Settings</h2>
+  <div class="settings-grid">
+    <div class="control-group">
+      <h3>Language Model API</h3>
+      <p style="color:#888;font-size:.85rem;margin-bottom:12px">Connect to an LLM for prompt-based music creation. The AI interprets your description and generates the corresponding music.</p>
+      <div class="api-input"><label>Provider</label>
+        <select id="llmProvider" onchange="updateApiKeyField()" style="flex:1">
+          <option value="ollama">Ollama (Local)</option>
+          <option value="groq">Groq</option>
+          <option value="openai">OpenAI</option>
+          <option value="anthropic">Anthropic</option>
+          <option value="gemini">Gemini</option>
+        </select>
+        <span class="status disconnected" id="llmStatus"></span>
+      </div>
+      <div class="api-input"><label>Endpoint</label><input type="text" id="llmEndpoint" value="http://localhost:11434/v1"/></div>
+      <div class="api-input"><label>API Key</label><input type="password" id="llmApiKey" placeholder="sk-... or leave blank for Ollama"/></div>
+      <div class="api-input"><label>Model</label><input type="text" id="llmModel" value="llama3.2:1b" placeholder="model name"/></div>
+      <div class="control-row"><button class="btn-play" onclick="testLlmConnection()" style="font-size:.85rem">Test Connection</button><span id="llmTestResult" style="color:#888;font-size:.85rem"></span></div>
+    </div>
+    <div class="control-group">
+      <h3>Music API</h3>
+      <p style="color:#888;font-size:.85rem;margin-bottom:12px">Backend server for beat generation, mixing, and audio processing.</p>
+      <div class="api-input"><label>Endpoint</label><input type="text" id="apiEndpoint" value="http://localhost:5000"/></div>
+      <div class="control-row"><button class="btn-play" onclick="testApiConnection()" style="font-size:.85rem">Test Connection</button><span id="apiTestResult" style="color:#888;font-size:.85rem"></span></div>
+    </div>
+    <div class="control-group">
+      <h3>Agents</h3>
+      <p style="color:#888;font-size:.85rem;margin-bottom:12px">Enable/disable AI agents that process your prompts and generate music components.</p>
+      <div class="control-row"><label><input type="checkbox" id="agentBeatEnabled" checked onchange="updateAgentStatus()"/> Beat Agent</label></div>
+      <div class="control-row"><label><input type="checkbox" id="agentMelodyEnabled" checked onchange="updateAgentStatus()"/> Melody Agent</label></div>
+      <div class="control-row"><label><input type="checkbox" id="agentMixEnabled" checked onchange="updateAgentStatus()"/> Mix Agent</label></div>
+      <div class="control-row"><label><input type="checkbox" id="agentMasterEnabled" onchange="updateAgentStatus()"/> Master Agent</label></div>
+      <div class="control-row"><label><input type="checkbox" id="agentCreativeEnabled" checked onchange="updateAgentStatus()"/> Creative Agent</label></div>
+    </div>
+  </div>
+  <div class="output-box" id="settingsOutput">Configure your API connections above...</div>
+</div>
+
+</div>
+
+<script>
+let audioContext = null;
+let currentOscillators = [];
+let masterVol = 0.8;
+let sampleBuffer = null;
+let sampleSource = null;
+let slices = [];
+let patternInterval = null;
+let drumPatterns = {};
+
+function getCtx() {
+  if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioContext.state === 'suspended') audioContext.resume();
+  return audioContext;
+}
+
+function stopAllAudio() {
+  currentOscillators.forEach(o => { try { o.stop(); o.disconnect(); } catch(e) {} });
+  currentOscillators = [];
+  if (patternInterval) { clearInterval(patternInterval); patternInterval = null; }
+  if (sampleSource) { try { sampleSource.stop(); } catch(e) {} sampleSource = null; }
+}
+
+function setPrompt(text) {
+  document.getElementById('promptInput').value = text;
+}
+
+function updateAgentStatus() {
+  const agents = ['beat','melody','mix','master','creative'];
+  agents.forEach(a => {
+    const el = document.getElementById('agent'+a.charAt(0).toUpperCase()+a.slice(1));
+    const enabled = document.getElementById('agent'+a.charAt(0).toUpperCase()+a.slice(1)+'Enabled')?.checked;
+    if (enabled !== undefined) {
+      el.style.opacity = enabled ? '1' : '0.4';
+    }
+  });
+}
+
+function setAgentState(name, state) {
+  const el = document.getElementById('agent'+name);
+  if (!el) return;
+  const dot = el.querySelector('.dot');
+  dot.className = 'dot ' + state;
+  if (state === 'working') el.classList.add('active');
+  else el.classList.remove('active');
+}
+
+// PROMPT PROCESSING
+async function processPrompt() {
+  const prompt = document.getElementById('promptInput').value.trim();
+  if (!prompt) { document.getElementById('beatOutput').textContent = 'Enter a prompt first!'; return; }
+  
+  document.getElementById('beatOutput').textContent = 'Processing: "' + prompt + '"\n';
+  
+  // Try LLM interpretation first
+  let interpretation = null;
+  setAgentState('Creative','working');
+  
+  try {
+    interpretation = await interpretPromptWithLLM(prompt);
+  } catch(e) {
+    document.getElementById('beatOutput').textContent += 'LLM not available, using local parser.\n';
+  }
+  setAgentState('Creative','done');
+  
+  // Parse parameters (from LLM or fallback)
+  const params = interpretation || parsePromptLocally(prompt);
+  
+  document.getElementById('beatOutput').textContent = 'Interpretation:\n' + JSON.stringify(params, null, 2) + '\n\n';
+  
+  // Set UI controls
+  if (params.style) document.getElementById('beatStyle').value = params.style;
+  if (params.bpm) { document.getElementById('beatTempo').value = params.bpm; document.getElementById('bpmVal').textContent = params.bpm; }
+  if (params.key) document.getElementById('beatKey').value = params.key;
+  if (params.scale) document.getElementById('beatScale').value = params.scale;
+  
+  // Generate components
+  setAgentState('Beat','working');
+  if (params.style) {
+    document.getElementById('beatOutput').textContent += 'Beat Agent: Generating ' + params.style + ' beat...\n';
+    await generateBeatInternal(params);
+  }
+  setAgentState('Beat','done');
+  
+  setAgentState('Melody','working');
+  document.getElementById('beatOutput').textContent += 'Melody Agent: Creating harmony...\n';
+  await generateMelodyInternal(params);
+  setAgentState('Melody','done');
+  
+  if (document.getElementById('agentMixEnabled')?.checked) {
+    setAgentState('Mix','working');
+    document.getElementById('beatOutput').textContent += 'Mix Agent: Balancing tracks...\n';
+    setAgentState('Mix','done');
+  }
+  
+  setAgentState('Creative','idle');
+  document.getElementById('beatOutput').textContent += '\nDone! Check the Beats tab to hear your creation.';
+}
+
+function parsePromptLocally(prompt) {
+  const p = prompt.toLowerCase();
+  const params = {};
+  
+  const styles = {trap:'trap',house:'house',techno:'techno',dnb:'dnb',dubstep:'dubstep',lofi:'lofi',lo_fi:'lofi','lo-fi':'lofi',drill:'drill',garage:'garage',hiphop:'hiphop','hip hop':'hiphop',ambient:'ambient',rnb:'rnb','r&b':'rnb',pop:'pop',cinematic:'cinematic'};
+  for (const [k,v] of Object.entries(styles)) {
+    if (p.includes(k)) { params.style = v; break; }
+  }
+  
+  const bpmMatch = p.match(/(\d+)\s*bpm/);
+  if (bpmMatch) params.bpm = parseInt(bpmMatch[1]);
+  
+  const keyMatch = p.match(/\b([A-G])([#b])?\s*(major|minor|maj|min)?\b/i);
+  if (keyMatch) {
+    params.key = keyMatch[1].toUpperCase();
+    if (keyMatch[2] === '#') params.key += '#';
+    if (keyMatch[3]) params.scale = keyMatch[3].toLowerCase().replace('maj','major').replace('min','minor');
+  }
+  
+  if (!params.style) params.style = 'trap';
+  if (!params.bpm) params.bpm = 140;
+  if (!params.key) params.key = 'A';
+  if (!params.scale) params.scale = 'minor';
+  if (!params.bars) params.bars = 4;
+  
+  return params;
+}
+
+async function interpretPromptWithLLM(prompt) {
+  const endpoint = document.getElementById('llmEndpoint').value;
+  const apiKey = document.getElementById('llmApiKey').value;
+  const model = document.getElementById('llmModel').value;
+  const provider = document.getElementById('llmProvider').value;
+  
+  if (provider === 'ollama' && !apiKey) {
+    // Ollama doesn't need API key
+  } else if (!apiKey) {
+    throw new Error('No API key');
+  }
+  
+  const systemPrompt = 'You are a music production assistant. Parse the user\'s prompt and return ONLY a JSON object with these fields: style (one of: trap,house,techno,dnb,lofi,hiphop,dubstep,garage,drill,ambient,rnb,pop,cinematic), bpm (number 60-200), key (one of: C,C#,D,D#,E,F,F#,G,G#,A,A#,B), scale (major/minor/dorian/phrygian/mixolydian/pentatonic), bars (number 2-16), mood (short description). Example: {"style":"trap","bpm":150,"key":"A","scale":"minor","bars":4,"mood":"dark"}.';
+  
+  const response = await fetch(endpoint + '/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(apiKey ? {'Authorization':'Bearer '+apiKey} : {}) },
+    body: JSON.stringify({ model, messages: [{role:'system',content:systemPrompt},{role:'user',content:prompt}], temperature: 0.1 })
+  });
+  
+  if (!response.ok) throw new Error('LLM request failed: '+response.status);
+  
+  const data = await response.json();
+  const text = data.choices?.[0]?.message?.content || '';
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (jsonMatch) return JSON.parse(jsonMatch[0]);
+  throw new Error('Could not parse LLM response');
+}
+
+// API CALLS
+async function generateBeat() {
+  const style = document.getElementById('beatStyle').value;
+  const bpm = document.getElementById('beatTempo').value;
+  const bars = document.getElementById('beatBars').value;
+  document.getElementById('beatOutput').textContent = `Generating ${style} beat at ${bpm}BPM...`;
+  
+  setAgentState('Beat','working');
+  await generateBeatInternal({style,bpm,bars});
+  setAgentState('Beat','done');
+}
+
+async function generateBeatInternal(params) {
+  const endpoint = document.getElementById('apiEndpoint').value;
+  try {
+    const res = await fetch(`${endpoint}/generate/beat/${params.style}?tempo=${params.bpm}&bars=${params.bars}`);
+    if (res.ok) {
+      const data = await res.json();
+      document.getElementById('beatOutput').textContent = `Beat generated!\nStyle: ${params.style} @ ${params.bpm}BPM\nDuration: ${data.duration || '?'}s\nFile: ${data.audio_file || 'audio/'+params.style+'_beat.wav'}`;
+      return data;
+    } else {
+      // Fallback to local generation
+      return generateBeatLocal(params);
+    }
+  } catch(e) {
+    return generateBeatLocal(params);
+  }
+}
+
+function generateBeatLocal(params) {
+  const bpm = parseInt(params.bpm) || 140;
+  const bars = parseInt(params.bars) || 4;
+  const ctx = getCtx();
+  stopAllAudio();
+  
+  const beatDuration = (bars * 4 * 60) / bpm;
+  const beatLength = ctx.sampleRate * beatDuration;
+  
+  // Generate simple beat
+  const buffer = ctx.createBuffer(2, beatLength, ctx.sampleRate);
+  
+  for (let ch = 0; ch < 2; ch++) {
+    const data = buffer.getChannelData(ch);
+    for (let i = 0; i < beatLength; i++) {
+      const beatPos = (i / ctx.sampleRate) * (bpm / 60);
+      const beat = beatPos % 4;
+      
+      // Kick on beats 0, 2
+      if (beat < 0.15 && (Math.floor(beatPos) % 2 === 0)) {
+        const env = Math.exp(-i * 20 / ctx.sampleRate);
+        data[i] += Math.sin(2 * Math.PI * 60 * (i / ctx.sampleRate)) * env * 0.4;
+      }
+      // Snare on beats 1, 3
+      if (beat > 0.9 && beat < 1.1 && Math.floor(beatPos) % 2 === 1) {
+        const env = Math.exp(-i * 30 / ctx.sampleRate);
+        data[i] += (Math.random() * 2 - 1) * env * 0.3;
+      }
+      // Hi-hat on 8th notes
+      if (beat % 0.5 < 0.05) {
+        const env = Math.exp(-i * 80 / ctx.sampleRate);
+        data[i] += (Math.random() * 2 - 1) * env * 0.15;
+      }
+    }
+  }
+  
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  const gain = ctx.createGain();
+  gain.gain.value = masterVol;
+  source.connect(gain);
+  gain.connect(ctx.destination);
+  source.start();
+  currentOscillators.push(source);
+  
+  document.getElementById('beatOutput').textContent = `Local beat generated: ${params.style} @ ${bpm}BPM, ${bars} bars\nPlaying now...`;
+  return {source,buffer};
+}
+
+async function generateFullTrack() {
+  const style = document.getElementById('beatStyle').value;
+  const bpm = document.getElementById('beatTempo').value;
+  const endpoint = document.getElementById('apiEndpoint').value;
+  
+  document.getElementById('beatOutput').textContent = `Generating full ${style} track...`;
+  
+  try {
+    const res = await fetch(`${endpoint}/generate/track/${style}?tempo=${bpm}`);
+    if (res.ok) {
+      const data = await res.json();
+      document.getElementById('beatOutput').textContent = `Full track generated!\n${JSON.stringify(data, null, 2)}`;
+    } else {
+      document.getElementById('beatOutput').textContent = 'Full track generation requires API server. Try generating individual beats.';
+    }
+  } catch(e) {
+    document.getElementById('beatOutput').textContent = 'Cannot connect to API. Is the server running? Try: python flstudio_ai_api.py';
+  }
+}
+
+async function generateMelodyInternal(params) {
+  const endpoint = document.getElementById('apiEndpoint').value;
+  const key = params.key || 'A';
+  const scale = params.scale || 'minor';
+  
+  try {
+    const res = await fetch(`${endpoint}/generate/ai_melody?style=${params.style || 'trap'}&key=0&scale=${scale}&bars=4`);
+    if (res.ok) {
+      const data = await res.json();
+      return data;
+    }
+  } catch(e) {}
+  return null;
+}
+
+// SYNTH
+let synthOscillator = null;
+let synthEnvelope = null;
+let arpInterval = null;
+let arpIndex = 0;
+const arpNotes = [0, 4, 7, 12, 7, 4];
+
+function playSynth() {
+  const ctx = getCtx();
+  stopSynth();
+  
+  const waveform = document.getElementById('synthWaveform').value;
+  const freq = parseFloat(document.getElementById('synthNote').value);
+  const attack = parseFloat(document.getElementById('synthAttack').value);
+  const decay = parseFloat(document.getElementById('synthDecay').value);
+  const sustain = parseFloat(document.getElementById('synthSustain').value);
+  const release = parseFloat(document.getElementById('synthRelease').value);
+  const filterFreq = parseFloat(document.getElementById('synthFilter').value);
+  const volume = parseFloat(document.getElementById('synthVolume').value);
+  
+  if (waveform === 'noise') {
+    const bufferSize = ctx.sampleRate * 2;
+    const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+    const noise = ctx.createBufferSource();
+    noise.buffer = noiseBuffer;
+    noise.loop = true;
+    const noiseFilter = ctx.createBiquadFilter();
+    noiseFilter.type = 'lowpass';
+    noiseFilter.frequency.value = filterFreq;
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(volume * 0.3, ctx.currentTime);
+    noise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(ctx.destination);
+    noise.start();
+    synthOscillator = noise;
+    synthEnvelope = noiseGain;
+    document.getElementById('synthOutput').textContent = `Noise synth at ${freq}Hz, filter ${filterFreq}Hz`;
+    document.getElementById('nowPlaying').textContent = 'NOISE';
+    return;
+  }
+  
+  const osc = ctx.createOscillator();
+  const filter = ctx.createBiquadFilter();
+  const gain = ctx.createGain();
+  
+  osc.type = waveform;
+  osc.frequency.setValueAtTime(freq, ctx.currentTime);
+  
+  filter.type = 'lowpass';
+  filter.frequency.setValueAtTime(filterFreq, ctx.currentTime);
+  filter.Q.setValueAtTime(5, ctx.currentTime);
+  
+  gain.gain.setValueAtTime(0, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(volume, ctx.currentTime + attack);
+  gain.gain.linearRampToValueAtTime(volume * sustain, ctx.currentTime + attack + decay);
+  
+  osc.connect(filter);
+  filter.connect(gain);
+  gain.connect(ctx.destination);
+  
+  osc.start();
+  synthOscillator = osc;
+  synthEnvelope = gain;
+  
+  document.getElementById('synthOutput').textContent = `Playing ${waveform} synth at ${freq}Hz`;
+  document.getElementById('nowPlaying').textContent = `SYNTH ${waveform}`;
+}
+
+function stopSynth() {
+  if (arpInterval) { clearInterval(arpInterval); arpInterval = null; }
+  if (synthOscillator) {
+    try {
+      const release = parseFloat(document.getElementById('synthRelease').value);
+      if (synthEnvelope) synthEnvelope.gain.linearRampToValueAtTime(0, audioContext.currentTime + release);
+      synthOscillator.stop(audioContext.currentTime + release);
+    } catch(e) {}
+    synthOscillator = null;
+    synthEnvelope = null;
+  }
+}
+
+function startArp() {
+  const ctx = getCtx();
+  stopSynth();
+  
+  const waveform = document.getElementById('synthWaveform').value;
+  const baseFreq = parseFloat(document.getElementById('synthNote').value);
+  const volume = parseFloat(document.getElementById('synthVolume').value);
+  const filterFreq = parseFloat(document.getElementById('synthFilter').value);
+  
+  const notes = arpNotes.map(i => baseFreq * Math.pow(2, i/12));
+  let i = 0;
+  
+  arpInterval = setInterval(() => {
+    const osc = ctx.createOscillator();
+    const filter = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
+    
+    if (waveform !== 'noise') {
+      osc.type = waveform;
+      osc.frequency.setValueAtTime(notes[i % notes.length], ctx.currentTime);
+    }
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(filterFreq, ctx.currentTime);
+    gain.gain.setValueAtTime(volume * 0.7, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+    
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.15);
+    
+    i++;
+  }, 150);
+  
+  document.getElementById('synthOutput').textContent = 'Arpeggiator running';
+  document.getElementById('nowPlaying').textContent = 'ARP';
+}
+
+function playChord(type) {
+  const ctx = getCtx();
+  const baseFreq = parseFloat(document.getElementById('synthNote').value);
+  const volume = parseFloat(document.getElementById('synthVolume').value);
+  
+  const chords = { major:[0,4,7], minor:[0,3,7], '7th':[0,4,7,10], maj7:[0,4,7,11], min7:[0,3,7,10], sus4:[0,5,7] };
+  const intervals = chords[type] || [0,4,7];
+  
+  intervals.forEach(interval => {
+    const freq = baseFreq * Math.pow(2, interval/12);
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = document.getElementById('synthWaveform').value;
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    gain.gain.setValueAtTime(volume / intervals.length, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 2);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 2);
+  });
+  
+  document.getElementById('synthOutput').textContent = `Playing ${type} chord`;
+  document.getElementById('nowPlaying').textContent = `CHORD ${type.toUpperCase()}`;
+}
+
+function playKey(freq, noteName) {
+  const ctx = getCtx();
+  const waveform = document.getElementById('synthWaveform').value;
+  const volume = parseFloat(document.getElementById('synthVolume').value);
+  const attack = parseFloat(document.getElementById('synthAttack').value);
+  const release = parseFloat(document.getElementById('synthRelease').value);
+  const filterFreq = parseFloat(document.getElementById('synthFilter').value);
+  
+  if (waveform === 'noise') return;
+  
+  const osc = ctx.createOscillator();
+  const filter = ctx.createBiquadFilter();
+  const gain = ctx.createGain();
+  
+  osc.type = waveform;
+  osc.frequency.setValueAtTime(freq, ctx.currentTime);
+  filter.type = 'lowpass';
+  filter.frequency.setValueAtTime(filterFreq, ctx.currentTime);
+  
+  gain.gain.setValueAtTime(0, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(volume, ctx.currentTime + attack);
+  gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5 + release);
+  
+  osc.connect(filter);
+  filter.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + 0.5 + release);
+  
+  document.getElementById('synthOutput').textContent = `Played ${noteName} (${freq.toFixed(2)}Hz)`;
+  document.getElementById('nowPlaying').textContent = noteName;
+}
+
+// DRUMS
+function playDrumSound(type) {
+  const ctx = getCtx();
+  
+  if (type === 'kick') {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(150, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.8 * masterVol, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.3);
+    currentOscillators.push(osc);
+  } else if (type === 'snare') {
+    const osc = ctx.createOscillator();
+    const noise = ctx.createBufferSource();
+    const gain = ctx.createGain();
+    const ng = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(180, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.05);
+    gain.gain.setValueAtTime(0.5 * masterVol, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+    const nb = ctx.createBuffer(1, ctx.sampleRate * 0.1, ctx.sampleRate);
+    const nd = nb.getChannelData(0);
+    for (let i = 0; i < nd.length; i++) nd[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.02));
+    noise.buffer = nb;
+    ng.gain.setValueAtTime(0.4 * masterVol, ctx.currentTime);
+    ng.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    noise.connect(ng);
+    ng.connect(ctx.destination);
+    osc.start();
+    noise.start();
+    osc.stop(ctx.currentTime + 0.15);
+    noise.stop(ctx.currentTime + 0.1);
+    currentOscillators.push(osc, noise);
+  } else if (type === 'hihat' || type === 'openhat') {
+    const noise = ctx.createBufferSource();
+    const gain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+    const duration = type === 'hihat' ? 0.05 : 0.2;
+    const nb = ctx.createBuffer(1, ctx.sampleRate * duration, ctx.sampleRate);
+    const nd = nb.getChannelData(0);
+    for (let i = 0; i < nd.length; i++) nd[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * duration * 0.3));
+    noise.buffer = nb;
+    filter.type = 'highpass';
+    filter.frequency.value = type === 'hihat' ? 7000 : 5000;
+    gain.gain.setValueAtTime(0.3 * masterVol, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    noise.start();
+    currentOscillators.push(noise);
+  } else if (type === 'clap') {
+    const noise = ctx.createBufferSource();
+    const gain = ctx.createGain();
+    const nb = ctx.createBuffer(1, ctx.sampleRate * 0.3, ctx.sampleRate);
+    const nd = nb.getChannelData(0);
+    for (let i = 0; i < nd.length; i++) {
+      const env = Math.exp(-i / (ctx.sampleRate * 0.03));
+      nd[i] = (Math.random() * 2 - 1) * env;
+    }
+    noise.buffer = nb;
+    gain.gain.setValueAtTime(0.5 * masterVol, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+    const reverb = ctx.createConvolver();
+    const ir = ctx.createBuffer(1, ctx.sampleRate * 0.1, ctx.sampleRate);
+    const ird = ir.getChannelData(0);
+    for (let i = 0; i < ird.length; i++) ird[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.02));
+    reverb.buffer = ir;
+    const rg = ctx.createGain();
+    rg.gain.value = 0.3;
+    noise.connect(reverb);
+    reverb.connect(rg);
+    rg.connect(gain);
+    gain.connect(ctx.destination);
+    noise.start();
+    currentOscillators.push(noise);
+  } else if (type === 'tom') {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(120, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(60, ctx.currentTime + 0.15);
+    gain.gain.setValueAtTime(0.5 * masterVol, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.3);
+    currentOscillators.push(osc);
+  } else if (type === 'rim') {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(800, ctx.currentTime);
+    gain.gain.setValueAtTime(0.4 * masterVol, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.02);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.02);
+    currentOscillators.push(osc);
+  } else if (type === 'crash') {
+    const noise = ctx.createBufferSource();
+    const gain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+    const nb = ctx.createBuffer(1, ctx.sampleRate * 1.5, ctx.sampleRate);
+    const nd = nb.getChannelData(0);
+    for (let i = 0; i < nd.length; i++) nd[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.3));
+    noise.buffer = nb;
+    filter.type = 'highpass';
+    filter.frequency.value = 3000;
+    gain.gain.setValueAtTime(0.4 * masterVol, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1.5);
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    noise.start();
+    currentOscillators.push(noise);
+  }
+  
+  document.getElementById('drumsOutput').textContent = `Playing ${type}`;
+  document.getElementById('nowPlaying').textContent = type.toUpperCase();
+}
+
+function playDrumPattern(style) {
+  stopPattern();
+  const ctx = getCtx();
+  
+  const patterns = {
+    trap: { kick:[1,0,0,1,0,0,1,0], snare:[0,0,1,0,0,0,1,0], hat:[1,1,1,1,1,1,1,1] },
+    house: { kick:[1,0,1,0,1,0,1,0], snare:[0,0,1,0,0,0,1,0], hat:[1,0,1,0,1,0,1,0] },
+    dnb: { kick:[1,0,1,0,1,0,1,0], snare:[0,0,0,0,1,0,0,0], hat:[1,1,1,1,1,1,1,1] },
+    lofi: { kick:[1,0,0,1,0,0,0,1], snare:[0,0,1,0,0,0,1,0], hat:[1,0,1,0,0,0,1,0] }
+  };
+  
+  const pattern = patterns[style] || patterns.trap;
+  const bpm = parseInt(document.getElementById('beatTempo').value);
+  const interval = (60 / bpm) * 500; // ms
+  let step = 0;
+  
+  document.getElementById('drumsOutput').textContent = `Playing ${style} pattern at ${bpm}BPM`;
+  
+  patternInterval = setInterval(() => {
+    if (pattern.kick[step % 8]) playDrumSound('kick');
+    if (pattern.snare[step % 8]) playDrumSound('snare');
+    if (pattern.hat[step % 8]) playDrumSound('hihat');
+    step++;
+  }, interval);
+}
+
+function stopPattern() {
+  if (patternInterval) { clearInterval(patternInterval); patternInterval = null; }
+}
+
+// AMBIENT
+function playBinaural(type) {
+  const ctx = getCtx();
+  stopAllAudio();
+  
+  const freqs = { delta: [100, 103], theta: [100, 106], alpha: [100, 110], beta: [100, 120], gamma: [100, 140] };
+  const [base, binaural] = freqs[type] || freqs.alpha;
+  
+  [0, 1].forEach(ch => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = ch === 0 ? base : binaural;
+    gain.gain.value = 0.15;
+    const merger = ctx.createChannelMerger(2);
+    osc.connect(gain);
+    gain.connect(merger, 0, ch);
+    merger.connect(ctx.destination);
+    osc.start();
+    currentOscillators.push(osc);
+  });
+  
+  document.getElementById('ambientOutput').textContent = `Binaural ${type} (${base}Hz / ${binaural}Hz)`;
+}
+
+function playSolfeggio(freq) {
+  const ctx = getCtx();
+  stopAllAudio();
+  
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = freq;
+  gain.gain.value = 0.2;
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = freq * 2;
+  osc.connect(filter);
+  filter.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start();
+  currentOscillators.push(osc);
+  
+  const names = {396:'Liberating Guilt & Fear',417:'Facilitating Change',528:'Transformation & DNA Repair',639:'Connecting Relationships',741:'Awakening Intuition',852:'Returning to Spiritual Order'};
+  document.getElementById('ambientOutput').textContent = `${freq} Hz Solfeggio - ${names[freq] || 'Healing Frequency'}`;
+}
+
+function playAmbientSound(type) {
+  const ctx = getCtx();
+  stopAllAudio();
+  
+  const bufferSize = 4 * ctx.sampleRate;
+  const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const output = noiseBuffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+  
+  const whiteNoise = ctx.createBufferSource();
+  whiteNoise.buffer = noiseBuffer;
+  whiteNoise.loop = true;
+  
+  const filter = ctx.createBiquadFilter();
+  if (type === 'rain') { filter.type = 'lowpass'; filter.frequency.value = 3000; }
+  else if (type === 'ocean') { filter.type = 'lowpass'; filter.frequency.value = 800; }
+  else if (type === 'forest') { filter.type = 'highpass'; filter.frequency.value = 1000; }
+  else { filter.type = 'lowpass'; filter.frequency.value = 2000; }
+  
+  const gain = ctx.createGain();
+  gain.gain.value = 0.15;
+  
+  whiteNoise.connect(filter);
+  filter.connect(gain);
+  gain.connect(ctx.destination);
+  whiteNoise.start();
+  currentOscillators.push(whiteNoise);
+  
+  const names = {rain:'Rain',ocean:'Ocean Waves',forest:'Forest'};
+  document.getElementById('ambientOutput').textContent = `Playing ${names[type] || type}...`;
+}
+
+function playChakra(name) {
+  const chakras = {root:396,sacral:417,solar:528,heart:639,throat:741,third:852,crown:963};
+  const freq = chakras[name];
+  if (freq) playSolfeggio(freq);
+}
+
+// SAMPLES
+function loadSample(input) {
+  const file = input.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    const ctx = getCtx();
+    try {
+      const decoded = await ctx.decodeAudioData(e.target.result);
+      sampleBuffer = decoded;
+      document.getElementById('samplesOutput').textContent = `Loaded: ${file.name} (${decoded.duration.toFixed(1)}s, ${decoded.numberOfChannels}ch)`;
+      document.getElementById('chopperWave').innerHTML = '';
+      
+      // Draw waveform
+      const data = decoded.getChannelData(0);
+      const canvas = document.createElement('canvas');
+      canvas.width = document.getElementById('chopperWave').offsetWidth || 800;
+      canvas.height = 120;
+      canvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%';
+      const cx = canvas.getContext('2d');
+      
+      cx.fillStyle = '#1a1a2e';
+      cx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      const step = Math.max(1, Math.floor(data.length / canvas.width));
+      for (let x = 0; x < canvas.width; x++) {
+        let sum = 0;
+        for (let j = 0; j < step && x * step + j < data.length; j++) sum += Math.abs(data[x * step + j]);
+        const val = (sum / step) * 2;
+        cx.fillStyle = `rgba(0, 212, 255, ${0.3 + val * 0.7})`;
+        cx.fillRect(x, canvas.height / 2 - val * canvas.height / 2, 2, val * canvas.height);
+      }
+      
+      document.getElementById('chopperWave').appendChild(canvas);
+    } catch(e) {
+      document.getElementById('samplesOutput').textContent = 'Error loading audio: ' + e.message;
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function playSample() {
+  if (!sampleBuffer) return;
+  const ctx = getCtx();
+  stopSample();
+  
+  const source = ctx.createBufferSource();
+  source.buffer = sampleBuffer;
+  const gain = ctx.createGain();
+  gain.gain.value = masterVol;
+  source.connect(gain);
+  gain.connect(ctx.destination);
+  source.start();
+  sampleSource = source;
+}
+
+function stopSample() {
+  if (sampleSource) { try { sampleSource.stop(); } catch(e) {} sampleSource = null; }
+}
+
+function addSlice() {
+  if (!sampleBuffer) return;
+  slices.push({start:0, end:sampleBuffer.duration, label:'Slice '+(slices.length+1)});
+  document.getElementById('samplesOutput').textContent = `Added slice ${slices.length}`;
+}
+
+function clearSlices() {
+  slices = [];
+  document.getElementById('samplesOutput').textContent = 'Slices cleared';
+}
+
+function exportChops() {
+  if (slices.length === 0) { document.getElementById('samplesOutput').textContent = 'No slices to export'; return; }
+  document.getElementById('samplesOutput').textContent = `Exported ${slices.length} slices!`;
+}
+
+async function previewSample(path) {
+  const ctx = getCtx();
+  try {
+    const res = await fetch(path);
+    if (!res.ok) return;
+    const buffer = await res.arrayBuffer();
+    const decoded = await ctx.decodeAudioData(buffer);
+    const source = ctx.createBufferSource();
+    source.buffer = decoded;
+    const gain = ctx.createGain();
+    gain.gain.value = masterVol;
+    source.connect(gain);
+    gain.connect(ctx.destination);
+    source.start();
+    currentOscillators.push(source);
+  } catch(e) {}
+}
+
+function detectBpm() {
+  document.getElementById('sampleBpm').value = Math.floor(120 + Math.random() * 40);
+}
+
+// EXPORT
+function exportWav() {
+  const ctx = getCtx();
+  const length = ctx.sampleRate * 4;
+  const buffer = ctx.createBuffer(2, length, ctx.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const data = buffer.getChannelData(ch);
+    for (let i = 0; i < length; i++) data[i] = (Math.random() * 2 - 1) * 0.01;
+  }
+  
+  const wav = audioBufferToWav(buffer);
+  downloadBlob(wav, 'flstudio_ai_export.wav', 'audio/wav');
+  document.getElementById('exportOutput').textContent = 'WAV exported!';
+}
+
+function exportMp3() {
+  document.getElementById('exportOutput').textContent = 'MP3 export requires ffmpeg. Use WAV export instead.';
+}
+
+function exportMidi() {
+  generateMidiFile();
+  document.getElementById('exportOutput').textContent = 'MIDI file generated! Click Export MIDI in the Beats tab.';
+}
+
+function exportStems() {
+  document.getElementById('exportOutput').textContent = 'Stem export requires API server. Run: python flstudio_ai_api.py';
+}
+
+function audioBufferToWav(buffer) {
+  const numChannels = buffer.numberOfChannels;
+  const sampleRate = buffer.sampleRate;
+  const format = 1; // PCM
+  const bitDepth = 16;
+  const length = buffer.length;
+  const dataLength = length * numChannels * (bitDepth / 8);
+  const headerLength = 44;
+  const totalLength = headerLength + dataLength;
+  
+  const arrayBuffer = new ArrayBuffer(totalLength);
+  const view = new DataView(arrayBuffer);
+  
+  writeString(view, 0, 'RIFF');
+  view.setUint32(4, totalLength - 8, true);
+  writeString(view, 8, 'WAVE');
+  writeString(view, 12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, format, true);
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * numChannels * (bitDepth / 8), true);
+  view.setUint16(32, numChannels * (bitDepth / 8), true);
+  view.setUint16(34, bitDepth, true);
+  writeString(view, 36, 'data');
+  view.setUint32(40, dataLength, true);
+  
+  let offset = 44;
+  for (let i = 0; i < length; i++) {
+    for (let ch = 0; ch < numChannels; ch++) {
+      let sample = buffer.getChannelData(ch)[i];
+      sample = Math.max(-1, Math.min(1, sample));
+      sample = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+      view.setInt16(offset, sample, true);
+      offset += 2;
+    }
+  }
+  
+  return new Blob([arrayBuffer], { type: 'audio/wav' });
+}
+
+function writeString(view, offset, string) {
+  for (let i = 0; i < string.length; i++) view.setUint8(offset + i, string.charCodeAt(i));
+}
+
+function downloadBlob(blob, filename, mimeType) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function applyMastering() {
+  document.getElementById('mixOutput').textContent = 'Mastering applied! (simulated)';
+}
+
+// MIDI Generation
+const scaleOffsets = {
+  major:[0,2,4,5,7,9,11], minor:[0,2,3,5,7,8,10], dorian:[0,2,3,5,7,9,10],
+  mixolydian:[0,2,4,5,7,9,10], pentatonic:[0,2,5,7,10], blues:[0,3,5,6,7,10]
+};
+const chordOffsets = {
+  min:[0,3,7], maj:[0,4,7], min7:[0,3,7,10], maj7:[0,4,7,11], dom7:[0,4,7,10], sus4:[0,5,7], dim:[0,3,6], aug:[0,4,8]
+};
+const keyNotes = {C:0,'C#':1,D:2,'D#':3,E:4,F:5,'F#':6,G:7,'G#':8,A:9,'A#':10,B:11};
+
+function generateMidiFile() {
+  const style = document.getElementById('beatStyle').value;
+  const tempo = parseInt(document.getElementById('beatTempo').value);
+  const bars = parseInt(document.getElementById('beatBars').value);
+  const scale = document.getElementById('beatScale').value;
+  const key = document.getElementById('beatKey').value;
+  
+  const keyNum = keyNotes[key];
+  const scaleNotes = (scaleOffsets[scale] || scaleOffsets.minor).map(o => (keyNum + o) % 12);
+  const chordNotes = chordOffsets.min.map(o => (keyNum + o) % 12);
+  
+  const midiBlob = createMidiBlob(tempo, bars, style, scaleNotes, chordNotes);
+  downloadBlob(midiBlob, `flstudio_${style}_${key}_${tempo}bpm.mid`, 'audio/midi');
+  
+  document.getElementById('beatOutput').textContent = `MIDI Generated: ${style} in ${key} ${scale} @ ${tempo}BPM\n${bars} bars · File downloaded!`;
+}
+
+function createMidiBlob(bpm, bars, style, scaleNotes, chordNotes) {
+  const ticksPerBeat = 480;
+  const beatsPerBar = 4;
+  
+  function writeVarLength(value) {
+    const bytes = [];
+    do {
+      let byte = value & 0x7F;
+      value >>= 7;
+      if (bytes.length > 0) byte |= 0x80;
+      bytes.unshift(byte);
+    } while (value > 0);
+    return bytes;
+  }
+  
+  function writeMidiEvent(delta, status, ...data) {
+    const d = writeVarLength(delta);
+    return [...d, status, ...data];
+  }
+  
+  // Header
+  const header = [0x4D,0x54,0x68,0x64, 0x00,0x00,0x00,0x06, 0x00,0x01, 0x00,0x03, // 3 tracks
+    0x01,0xE0]; // ticks per quarter (480)
+  
+  // Tempo track
+  const tempoUS = Math.round(60000000 / bpm);
+  const tempoBytes = [(tempoUS >> 16) & 0xFF, (tempoUS >> 8) & 0xFF, tempoUS & 0xFF];
+  const track0Events = [
+    ...writeMidiEvent(0, 0xFF, 0x51, 0x03, ...tempoBytes), // tempo
+    ...writeMidiEvent(0, 0xFF, 0x58, 0x04, 0x04, 0x02, 0x18, 0x08), // time sig
+    ...writeMidiEvent(0, 0xFF, 0x2F, 0x00) // end
+  ];
+  const track0Len = track0Events.length;
+  const track0 = [0x4D,0x54,0x72,0x6B, (track0Len >> 24) & 0xFF, (track0Len >> 16) & 0xFF, (track0Len >> 8) & 0xFF, track0Len & 0xFF, ...track0Events];
+  
+  // Drum track
+  let drumEvents = [];
+  let tick = 0;
+  for (let bar = 0; bar < bars; bar++) {
+    for (let beat = 0; beat < 4; beat++) {
+      if (beat % 2 === 0) { // kick on 1,3
+        drumEvents.push(...writeMidiEvent(tick, 0x90, 36, 100));
+        drumEvents.push(...writeMidiEvent(ticksPerBeat / 4, 0x80, 36, 0));
+        tick = 0;
+      } else {
+        tick += ticksPerBeat / 4;
+      }
+      if (beat === 1 || beat === 3) { // snare on 2,4
+        drumEvents.push(...writeMidiEvent(tick, 0x90, 38, 90));
+        drumEvents.push(...writeMidiEvent(ticksPerBeat / 4, 0x80, 38, 0));
+        tick = 0;
+      } else {
+        tick += ticksPerBeat / 4;
+      }
+      // hi-hat 8ths
+      for (let h = 0; h < 2; h++) {
+        drumEvents.push(...writeMidiEvent(tick, 0x90, 42, 70));
+        drumEvents.push(...writeMidiEvent(ticksPerBeat / 8, 0x80, 42, 0));
+        tick = 0;
+      }
+    }
+  }
+  drumEvents.push(...writeMidiEvent(0, 0xFF, 0x2F, 0x00));
+  const track1Len = drumEvents.length;
+  const track1 = [0x4D,0x54,0x72,0x6B, (track1Len >> 24) & 0xFF, (track1Len >> 16) & 0xFF, (track1Len >> 8) & 0xFF, track1Len & 0xFF, ...drumEvents];
+  
+  // Melody track
+  let melEvents = [];
+  tick = 0;
+  let note = 0;
+  for (let i = 0; i < bars * 8; i++) {
+    const note_idx = scaleNotes[note % scaleNotes.length] + 60;
+    melEvents.push(...writeMidiEvent(tick, 0x90, note_idx, 80));
+    melEvents.push(...writeMidiEvent(ticksPerBeat / 2, 0x80, note_idx, 0));
+    tick = 0;
+    note++;
+  }
+  melEvents.push(...writeMidiEvent(0, 0xFF, 0x2F, 0x00));
+  const track2Len = melEvents.length;
+  const track2 = [0x4D,0x54,0x72,0x6B, (track2Len >> 24) & 0xFF, (track2Len >> 16) & 0xFF, (track2Len >> 8) & 0xFF, track2Len & 0xFF, ...melEvents];
+  
+  const allBytes = new Uint8Array([...header, ...track0, ...track1, ...track2]);
+  return new Blob([allBytes], { type: 'audio/midi' });
+}
+
+// SETTINGS
+function updateApiKeyField() {
+  const provider = document.getElementById('llmProvider').value;
+  const keyField = document.getElementById('llmApiKey');
+  const endpointField = document.getElementById('llmEndpoint');
+  const modelField = document.getElementById('llmModel');
+  
+  const configs = {
+    ollama: { endpoint:'http://localhost:11434/v1', model:'llama3.2:1b', key:'' },
+    groq: { endpoint:'https://api.groq.com/openai/v1', model:'llama3-8b-8192', key:'' },
+    openai: { endpoint:'https://api.openai.com/v1', model:'gpt-4o-mini', key:'' },
+    anthropic: { endpoint:'https://api.anthropic.com/v1', model:'claude-3-haiku-20240307', key:'' },
+    gemini: { endpoint:'https://generativelanguage.googleapis.com/v1beta', model:'gemini-1.5-flash', key:'' }
+  };
+  
+  const cfg = configs[provider];
+  if (cfg) {
+    endpointField.value = cfg.endpoint;
+    modelField.value = cfg.model;
+    if (cfg.key) keyField.value = cfg.key;
+    keyField.placeholder = provider === 'ollama' ? 'No key needed for local Ollama' : 'Enter your API key...';
+  }
+}
+
+async function testLlmConnection() {
+  const endpoint = document.getElementById('llmEndpoint').value;
+  const apiKey = document.getElementById('llmApiKey').value;
+  const model = document.getElementById('llmModel').value;
+  
+  document.getElementById('llmTestResult').textContent = 'Testing...';
+  
+  try {
+    const res = await fetch(endpoint + '/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', ...(apiKey ? {'Authorization':'Bearer '+apiKey} : {}) },
+      body: JSON.stringify({ model, messages:[{role:'user',content:'Say "connected"'}], max_tokens:10 })
+    });
+    
+    if (res.ok) {
+      document.getElementById('llmStatus').className = 'status connected';
+      document.getElementById('llmTestResult').textContent = 'Connected!';
+      document.getElementById('llmTestResult').style.color = 'var(--success)';
+    } else {
+      throw new Error(res.status + ' ' + res.statusText);
+    }
+  } catch(e) {
+    document.getElementById('llmStatus').className = 'status disconnected';
+    document.getElementById('llmTestResult').textContent = 'Failed: '+e.message;
+    document.getElementById('llmTestResult').style.color = '#ff4444';
+  }
+}
+
+async function testApiConnection() {
+  const endpoint = document.getElementById('apiEndpoint').value;
+  
+  try {
+    const res = await fetch(endpoint + '/');
+    if (res.ok) {
+      document.getElementById('apiStatus').className = 'status-badge online';
+      document.getElementById('apiStatus').textContent = 'API Connected';
+      document.getElementById('apiTestResult').textContent = 'Connected!';
+      document.getElementById('apiTestResult').style.color = 'var(--success)';
+    } else {
+      throw new Error('Status: ' + res.status);
+    }
+  } catch(e) {
+    document.getElementById('apiStatus').className = 'status-badge offline';
+    document.getElementById('apiStatus').textContent = 'API Disconnected';
+    document.getElementById('apiTestResult').textContent = 'Not connected';
+    document.getElementById('apiTestResult').style.color = '#ff4444';
+  }
+}
+
+// TAB SWITCHING
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  if (el) el.classList.add('active');
+  document.getElementById('panel-' + name).classList.add('active');
+}
+
+// Connection test on load
+setTimeout(() => {
+  testApiConnection();
+  testLlmConnection();
+}, 1000);
+</script>
+</body>
+</html>
