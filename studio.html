@@ -429,7 +429,6 @@ let sampleBuffer = null;
 let sampleSource = null;
 let slices = [];
 let patternInterval = null;
-let drumPatterns = {};
 
 function getCtx() {
   if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -545,6 +544,9 @@ function parsePromptLocally(prompt) {
   if (!params.scale) params.scale = 'minor';
   if (!params.bars) params.bars = 4;
   
+  params.bpm = parseInt(params.bpm);
+  params.bars = parseInt(params.bars);
+  
   return params;
 }
 
@@ -612,32 +614,38 @@ function generateBeatLocal(params) {
   const ctx = getCtx();
   stopAllAudio();
   
-  const beatDuration = (bars * 4 * 60) / bpm;
+  const beatDuration = Math.min((bars * 4 * 60) / bpm, 30); // cap at 30s
   const beatLength = ctx.sampleRate * beatDuration;
   
-  // Generate simple beat
   const buffer = ctx.createBuffer(2, beatLength, ctx.sampleRate);
+  const kickPhase = [60, 0, 60, 0]; // pitch sweep start per 16th
   
   for (let ch = 0; ch < 2; ch++) {
     const data = buffer.getChannelData(ch);
     for (let i = 0; i < beatLength; i++) {
-      const beatPos = (i / ctx.sampleRate) * (bpm / 60);
-      const beat = beatPos % 4;
+      const t = i / ctx.sampleRate;
+      const beatPos = t * (bpm / 60);
+      const beatInBar = beatPos % 4;
+      const sixteenth = beatPos % 1;
       
       // Kick on beats 0, 2
-      if (beat < 0.15 && (Math.floor(beatPos) % 2 === 0)) {
-        const env = Math.exp(-i * 20 / ctx.sampleRate);
-        data[i] += Math.sin(2 * Math.PI * 60 * (i / ctx.sampleRate)) * env * 0.4;
+      if (beatInBar < 0.15 && (Math.floor(beatPos) % 2 === 0)) {
+        const env = Math.exp(-t * 25);
+        data[i] += Math.sin(2 * Math.PI * (60 - t * 200) * t) * env * 0.4;
       }
       // Snare on beats 1, 3
-      if (beat > 0.9 && beat < 1.1 && Math.floor(beatPos) % 2 === 1) {
-        const env = Math.exp(-i * 30 / ctx.sampleRate);
+      if (beatInBar > 0.85 && beatInBar < 1.1 && Math.floor(beatPos) % 2 === 1) {
+        const env = Math.exp(-t * 35);
         data[i] += (Math.random() * 2 - 1) * env * 0.3;
       }
       // Hi-hat on 8th notes
-      if (beat % 0.5 < 0.05) {
-        const env = Math.exp(-i * 80 / ctx.sampleRate);
-        data[i] += (Math.random() * 2 - 1) * env * 0.15;
+      if (sixteenth < 0.06 || (sixteenth > 0.45 && sixteenth < 0.52)) {
+        const env = Math.exp(-t * 100);
+        data[i] += (Math.random() * 2 - 1) * env * 0.12;
+      }
+      // Sub bass
+      if (beatInBar < 0.5 && (Math.floor(beatPos) % 2 === 0)) {
+        data[i] += Math.sin(2 * Math.PI * 55 * t) * Math.exp(-t * 5) * 0.15;
       }
     }
   }
@@ -729,8 +737,8 @@ function playSynth() {
     noise.start();
     synthOscillator = noise;
     synthEnvelope = noiseGain;
+    currentOscillators.push(noise);
     document.getElementById('synthOutput').textContent = `Noise synth at ${freq}Hz, filter ${filterFreq}Hz`;
-    document.getElementById('nowPlaying').textContent = 'NOISE';
     return;
   }
   
@@ -756,9 +764,9 @@ function playSynth() {
   osc.start();
   synthOscillator = osc;
   synthEnvelope = gain;
+  currentOscillators.push(osc);
   
   document.getElementById('synthOutput').textContent = `Playing ${waveform} synth at ${freq}Hz`;
-  document.getElementById('nowPlaying').textContent = `SYNTH ${waveform}`;
 }
 
 function stopSynth() {
@@ -805,6 +813,7 @@ function startArp() {
     gain.connect(ctx.destination);
     osc.start();
     osc.stop(ctx.currentTime + 0.15);
+    currentOscillators.push(osc);
     
     i++;
   }, 150);
@@ -833,6 +842,7 @@ function playChord(type) {
     gain.connect(ctx.destination);
     osc.start();
     osc.stop(ctx.currentTime + 2);
+    currentOscillators.push(osc);
   });
   
   document.getElementById('synthOutput').textContent = `Playing ${type} chord`;
@@ -867,6 +877,7 @@ function playKey(freq, noteName) {
   gain.connect(ctx.destination);
   osc.start();
   osc.stop(ctx.currentTime + 0.5 + release);
+  currentOscillators.push(osc);
   
   document.getElementById('synthOutput').textContent = `Played ${noteName} (${freq.toFixed(2)}Hz)`;
   document.getElementById('nowPlaying').textContent = noteName;
@@ -1043,19 +1054,19 @@ function playBinaural(type) {
   const freqs = { delta: [100, 103], theta: [100, 106], alpha: [100, 110], beta: [100, 120], gamma: [100, 140] };
   const [base, binaural] = freqs[type] || freqs.alpha;
   
+  const merger = ctx.createChannelMerger(2);
   [0, 1].forEach(ch => {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = 'sine';
     osc.frequency.value = ch === 0 ? base : binaural;
     gain.gain.value = 0.15;
-    const merger = ctx.createChannelMerger(2);
     osc.connect(gain);
     gain.connect(merger, 0, ch);
-    merger.connect(ctx.destination);
     osc.start();
     currentOscillators.push(osc);
   });
+  merger.connect(ctx.destination);
   
   document.getElementById('ambientOutput').textContent = `Binaural ${type} (${base}Hz / ${binaural}Hz)`;
 }
@@ -1076,7 +1087,7 @@ function playSolfeggio(freq) {
   filter.connect(gain);
   gain.connect(ctx.destination);
   osc.start();
-  currentOscillators.push(osc);
+  currentOscillators.push(osc, filter, gain);
   
   const names = {396:'Liberating Guilt & Fear',417:'Facilitating Change',528:'Transformation & DNA Repair',639:'Connecting Relationships',741:'Awakening Intuition',852:'Returning to Spiritual Order'};
   document.getElementById('ambientOutput').textContent = `${freq} Hz Solfeggio - ${names[freq] || 'Healing Frequency'}`;
@@ -1224,14 +1235,35 @@ function exportWav() {
   const ctx = getCtx();
   const length = ctx.sampleRate * 4;
   const buffer = ctx.createBuffer(2, length, ctx.sampleRate);
+  const bpm = parseInt(document.getElementById('beatTempo').value) || 140;
+  const bars = parseInt(document.getElementById('beatBars').value) || 4;
+  
   for (let ch = 0; ch < 2; ch++) {
     const data = buffer.getChannelData(ch);
-    for (let i = 0; i < length; i++) data[i] = (Math.random() * 2 - 1) * 0.01;
+    for (let i = 0; i < length; i++) {
+      const t = i / ctx.sampleRate;
+      const beatPos = t * (bpm / 60);
+      const beat = beatPos % 4;
+      // Kick
+      if (beat < 0.12 && (Math.floor(beatPos) % 2 === 0)) {
+        data[i] += Math.sin(2 * Math.PI * 60 * t) * Math.exp(-t * 20) * 0.3;
+      }
+      // Snare
+      if (beat > 0.85 && beat < 1.15 && Math.floor(beatPos) % 2 === 1) {
+        data[i] += (Math.random() * 2 - 1) * Math.exp(-t * 25) * 0.25;
+      }
+      // Hi-hat
+      if (beat % 0.5 < 0.04) {
+        data[i] += (Math.random() * 2 - 1) * Math.exp(-t * 60) * 0.1;
+      }
+      // Simple bassline
+      data[i] += Math.sin(2 * Math.PI * 55 * t) * 0.08;
+    }
   }
   
   const wav = audioBufferToWav(buffer);
-  downloadBlob(wav, 'flstudio_ai_export.wav', 'audio/wav');
-  document.getElementById('exportOutput').textContent = 'WAV exported!';
+  downloadBlob(wav, `flstudio_export_${bpm}bpm_${bars}bars.wav`, 'audio/wav');
+  document.getElementById('exportOutput').textContent = `WAV exported: ${bpm}BPM ${bars} bars`;
 }
 
 function exportMp3() {
@@ -1372,26 +1404,28 @@ function createMidiBlob(bpm, bars, style, scaleNotes, chordNotes) {
   // Drum track
   let drumEvents = [];
   let tick = 0;
+  const sub = Math.round(ticksPerBeat / 4);
   for (let bar = 0; bar < bars; bar++) {
     for (let beat = 0; beat < 4; beat++) {
-      if (beat % 2 === 0) { // kick on 1,3
+      const isKickBeat = (beat === 0 || beat === 2);
+      const isSnareBeat = (beat === 1 || beat === 3);
+      if (isKickBeat) {
         drumEvents.push(...writeMidiEvent(tick, 0x90, 36, 100));
-        drumEvents.push(...writeMidiEvent(ticksPerBeat / 4, 0x80, 36, 0));
-        tick = 0;
+        drumEvents.push(...writeMidiEvent(sub, 0x80, 36, 0));
+        tick = sub;
       } else {
-        tick += ticksPerBeat / 4;
+        tick += sub;
       }
-      if (beat === 1 || beat === 3) { // snare on 2,4
+      if (isSnareBeat) {
         drumEvents.push(...writeMidiEvent(tick, 0x90, 38, 90));
-        drumEvents.push(...writeMidiEvent(ticksPerBeat / 4, 0x80, 38, 0));
-        tick = 0;
+        drumEvents.push(...writeMidiEvent(sub, 0x80, 38, 0));
+        tick = sub;
       } else {
-        tick += ticksPerBeat / 4;
+        tick += sub;
       }
-      // hi-hat 8ths
       for (let h = 0; h < 2; h++) {
         drumEvents.push(...writeMidiEvent(tick, 0x90, 42, 70));
-        drumEvents.push(...writeMidiEvent(ticksPerBeat / 8, 0x80, 42, 0));
+        drumEvents.push(...writeMidiEvent(Math.round(ticksPerBeat / 8), 0x80, 42, 0));
         tick = 0;
       }
     }
