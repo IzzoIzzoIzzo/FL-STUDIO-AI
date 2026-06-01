@@ -108,17 +108,14 @@ SOL uses 5 primitives (STORE, FETCH, QUERY, COMPUTE, LOGIC) to minimize API cost
 
 ---
 
-## HTML Interfaces
+## HTML Interface
 
 | File | What It Does |
 |------|-------------|
-| `SHADDAI_OPENCORE_V1.html` | Graph-based dashboard with 7 agents, AINL primitives, memory panel |
-| `SHADDAI_ENGINE.html` | Unified music creation engine |
-| `UNIFIED.html` | Music engine with beats/synth/piano/healing/AI/export |
-| `LAUNCHER.html` | Main music engine launcher |
-| `flstudio_ai_interface.html` | Web GUI for FL Studio AI |
-| `system_architecture.html` | Interactive 3D visualization of all modules |
-| `beat_visualizer.html` | Beat visualization |
+| `studio.html` | **ONE consolidated UI** — Prompt-to-music with LLM integration (Ollama/Groq/OpenAI/Anthropic/Gemini), 5 music agents, synth engine, drum machine, sample chopper, ambient/healing frequencies, piano keyboard, MIDI/WAV export, mix/master controls, API settings. Replaces all previous HTML files. |
+| `flstudio_ai_interface.html` | Legacy web GUI (keep as fallback) |
+| `flstudio_ai_simple.html` | Legacy simple interface |
+| `beat_visualizer.html` | Audio visualization |
 
 ---
 
