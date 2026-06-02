@@ -135,6 +135,7 @@ button:hover{transform:scale(1.03)}
     <span class="status-badge offline" id="mcpStatus">MCP Disconnected</span>
     <span style="color:#666;font-size:.85rem">v8.0 · In Progress</span>
   </div>
+  <div id="nowPlaying" style="margin-top:10px;font-size:1.2rem;font-weight:bold;color:var(--primary);min-height:28px;letter-spacing:1px">—</div>
 </header>
 
 <div class="prompt-bar" id="promptSection">
@@ -161,6 +162,18 @@ button:hover{transform:scale(1.03)}
   <div class="agent-chip" id="agentMix"><span class="dot idle"></span> Mix Agent</div>
   <div class="agent-chip" id="agentMaster"><span class="dot idle"></span> Master Agent</div>
   <div class="agent-chip" id="agentCreative"><span class="dot idle"></span> Creative Agent</div>
+</div>
+
+<canvas id="waveformCanvas" style="width:100%;height:100px;border-radius:10px;margin-bottom:10px;background:#0f0c29;display:block"></canvas>
+
+<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+  <span style="color:#888;font-size:.85rem">Presets:</span>
+  <select id="presetSelect" onchange="loadPreset(this.value)" style="width:auto;min-width:140px;padding:6px 10px">
+    <option value="">— Select Preset —</option>
+  </select>
+  <button class="btn-ghost" onclick="savePreset()" style="font-size:.8rem;padding:6px 14px">Save</button>
+  <button class="btn-ghost" onclick="deletePreset()" style="font-size:.8rem;padding:6px 14px">Delete</button>
+  <span style="color:#666;font-size:.8rem;margin-left:auto">Click pads or say a prompt → music plays</span>
 </div>
 
 <div class="tabs">
@@ -202,8 +215,12 @@ button:hover{transform:scale(1.03)}
     <div class="control-row">
       <button class="btn-play" onclick="generateBeat()">Generate Beat</button>
       <button class="btn-play" onclick="generateFullTrack()">Full Track</button>
-      <button class="btn-save" onclick="generateMidiFile()">MIDI</button>
+      <button class="btn-save" onclick="generateMidiFile(); renderPianoRoll()">MIDI</button>
     </div>
+    <div class="control-row">
+      <label>Piano Roll Preview</label>
+    </div>
+    <canvas id="pianoRollCanvas" style="width:100%;height:120px;border-radius:8px;background:rgba(0,0,0,0.5);margin-bottom:8px;display:block"></canvas>
   </div>
   <div class="output-box" id="beatOutput">Click "Generate Beat" to start making music...</div>
 </div>
@@ -293,7 +310,7 @@ button:hover{transform:scale(1.03)}
   <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">
     <div class="control-group">
       <h3>Mix Controls</h3>
-      <div class="control-row"><label>Master Vol</label><input type="range" min="0" max="1" value="0.8" step="0.01" oninput="masterVol=this.value;document.getElementById('masterDb').textContent=(Math.round(20*Math.log10(this.value||0.001)*10)/10)+'dB'" style="flex:2"/><span id="masterDb" style="color:var(--primary);min-width:50px">-1.9dB</span></div>
+      <div class="control-row"><label>Master Vol</label><input type="range" min="0" max="1" value="0.8" step="0.01" oninput="setMasterVol(this.value);document.getElementById('masterDb').textContent=(Math.round(20*Math.log10(this.value||0.001)*10)/10)+'dB'" style="flex:2"/><span id="masterDb" style="color:var(--primary);min-width:50px">-1.9dB</span></div>
       <div class="control-row"><label>Bass</label><input type="range" min="-12" max="12" value="0" step="0.5" style="flex:2"/><span style="color:#888;min-width:30px">0dB</span></div>
       <div class="control-row"><label>Mid</label><input type="range" min="-12" max="12" value="0" step="0.5" style="flex:2"/></div>
       <div class="control-row"><label>Treble</label><input type="range" min="-12" max="12" value="0" step="0.5" style="flex:2"/></div>
@@ -325,9 +342,10 @@ button:hover{transform:scale(1.03)}
       <input type="number" id="sampleBpm" value="140" style="width:80px"/>
       <button class="btn-ghost" onclick="detectBpm()">Detect BPM</button>
     </div>
-    <div class="chopper-waveform" id="chopperWave">
-      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#666">Load a WAV file to chop</div>
+    <div class="chopper-waveform" id="chopperWave" ondragover="event.preventDefault()" ondrop="handleDropSample(event)" style="cursor:pointer" onclick="document.getElementById('fileInput').click()">
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#666;pointer-events:none" id="chopperPlaceholder">Drop a WAV/MP3 file here or click to load</div>
     </div>
+    <input type="file" id="fileInput" accept="audio/wav,audio/mp3,audio/*" onchange="loadSample(this)" style="display:none"/>
     <div class="control-row">
       <button class="btn-accent" onclick="addSlice()">Add Slice</button>
       <button class="btn-save" onclick="clearSlices()">Clear Slices</button>
@@ -429,18 +447,147 @@ let sampleBuffer = null;
 let sampleSource = null;
 let slices = [];
 let patternInterval = null;
+let analyserNode = null;
+let visualizerId = null;
+
+let masterGain = null;
 
 function getCtx() {
-  if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  if (!audioContext) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioContext.createGain();
+    masterGain.gain.value = masterVol;
+    analyserNode = audioContext.createAnalyser();
+    analyserNode.fftSize = 256;
+    masterGain.connect(analyserNode);
+    analyserNode.connect(audioContext.destination);
+    startVisualizer();
+  }
   if (audioContext.state === 'suspended') audioContext.resume();
   return audioContext;
+}
+
+function setMasterVol(v) {
+  masterVol = v;
+  if (masterGain) masterGain.gain.value = v;
 }
 
 function stopAllAudio() {
   currentOscillators.forEach(o => { try { o.stop(); o.disconnect(); } catch(e) {} });
   currentOscillators = [];
   if (patternInterval) { clearInterval(patternInterval); patternInterval = null; }
+  if (arpInterval) { clearInterval(arpInterval); arpInterval = null; }
   if (sampleSource) { try { sampleSource.stop(); } catch(e) {} sampleSource = null; }
+  document.getElementById('nowPlaying').textContent = '—';
+}
+
+function startVisualizer() {
+  if (visualizerId) cancelAnimationFrame(visualizerId);
+  
+  const canvas = document.getElementById('waveformCanvas');
+  if (!canvas) return;
+  const cx = canvas.getContext('2d');
+  const w = canvas.width = canvas.offsetWidth || 800;
+  const h = canvas.height = 100;
+  
+  function draw() {
+    if (!analyserNode) {
+      visualizerId = requestAnimationFrame(draw);
+      return;
+    }
+    const data = new Uint8Array(analyserNode.frequencyBinCount);
+    analyserNode.getByteTimeDomainData(data);
+    
+    cx.fillStyle = '#0f0c29';
+    cx.fillRect(0, 0, w, h);
+    cx.lineWidth = 2;
+    cx.strokeStyle = '#00d4ff';
+    cx.beginPath();
+    
+    const sliceWidth = w / data.length;
+    let x = 0;
+    for (let i = 0; i < data.length; i++) {
+      const v = data[i] / 128.0;
+      const y = v * h / 2;
+      if (i === 0) cx.moveTo(x, y);
+      else cx.lineTo(x, y);
+      x += sliceWidth;
+    }
+    cx.stroke();
+    
+    const freqData = new Uint8Array(analyserNode.frequencyBinCount);
+    analyserNode.getByteFrequencyData(freqData);
+    cx.fillStyle = 'rgba(123, 47, 247, 0.4)';
+    const barWidth = w / 64;
+    for (let i = 0; i < 64; i++) {
+      const val = freqData[i] / 256;
+      cx.fillRect(i * barWidth, h - val * h, barWidth - 1, val * h);
+    }
+    
+    visualizerId = requestAnimationFrame(draw);
+  }
+  draw();
+}
+  try {
+    if (source && source.connect) {
+      source.connect(analyserNode);
+      analyserNode.connect(masterGain);
+    }
+  } catch(e) {}
+  
+  if (visualizerId) cancelAnimationFrame(visualizerId);
+  
+  const canvas = document.getElementById('waveformCanvas');
+  if (!canvas) return;
+  const cx = canvas.getContext('2d');
+  const w = canvas.width = canvas.offsetWidth || 800;
+  const h = canvas.height = 100;
+  
+  function draw() {
+    if (!analyserNode) return;
+    const data = new Uint8Array(analyserNode.frequencyBinCount);
+    analyserNode.getByteTimeDomainData(data);
+    
+    cx.fillStyle = '#0f0c29';
+    cx.fillRect(0, 0, w, h);
+    cx.lineWidth = 2;
+    cx.strokeStyle = '#00d4ff';
+    cx.beginPath();
+    
+    const sliceWidth = w / data.length;
+    let x = 0;
+    for (let i = 0; i < data.length; i++) {
+      const v = data[i] / 128.0;
+      const y = v * h / 2;
+      if (i === 0) cx.moveTo(x, y);
+      else cx.lineTo(x, y);
+      x += sliceWidth;
+    }
+    cx.stroke();
+    
+    // Frequency bars
+    const freqData = new Uint8Array(analyserNode.frequencyBinCount);
+    analyserNode.getByteFrequencyData(freqData);
+    cx.fillStyle = 'rgba(123, 47, 247, 0.4)';
+    const barWidth = w / 64;
+    for (let i = 0; i < 64; i++) {
+      const val = freqData[i] / 256;
+      cx.fillRect(i * barWidth, h - val * h, barWidth - 1, val * h);
+    }
+    
+    visualizerId = requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+function stopVisualizer() {
+  if (visualizerId) { cancelAnimationFrame(visualizerId); visualizerId = null; }
+  const canvas = document.getElementById('waveformCanvas');
+  if (canvas) {
+    const cx = canvas.getContext('2d');
+    cx.fillStyle = '#0f0c29';
+    cx.fillRect(0, 0, canvas.width, canvas.height);
+  }
 }
 
 function setPrompt(text) {
@@ -465,6 +612,88 @@ function setAgentState(name, state) {
   dot.className = 'dot ' + state;
   if (state === 'working') el.classList.add('active');
   else el.classList.remove('active');
+}
+
+// PRESETS
+function savePreset() {
+  const name = prompt('Preset name:');
+  if (!name) return;
+  const state = {
+    style: document.getElementById('beatStyle').value,
+    key: document.getElementById('beatKey').value,
+    scale: document.getElementById('beatScale').value,
+    bpm: document.getElementById('beatTempo').value,
+    bars: document.getElementById('beatBars').value,
+    waveform: document.getElementById('synthWaveform').value,
+    synthFreq: document.getElementById('synthNote').value,
+    synthAttack: document.getElementById('synthAttack').value,
+    synthDecay: document.getElementById('synthDecay').value,
+    synthSustain: document.getElementById('synthSustain').value,
+    synthRelease: document.getElementById('synthRelease').value,
+    synthFilter: document.getElementById('synthFilter').value,
+    synthVolume: document.getElementById('synthVolume').value,
+    masterVol: masterVol,
+    llmProvider: document.getElementById('llmProvider').value,
+    llmEndpoint: document.getElementById('llmEndpoint').value,
+    llmModel: document.getElementById('llmModel').value,
+    apiEndpoint: document.getElementById('apiEndpoint').value
+  };
+  const presets = JSON.parse(localStorage.getItem('flstudio_presets') || '{}');
+  presets[name] = state;
+  localStorage.setItem('flstudio_presets', JSON.stringify(presets));
+  refreshPresetList();
+}
+
+function loadPreset(name) {
+  if (!name) return;
+  const presets = JSON.parse(localStorage.getItem('flstudio_presets') || '{}');
+  const state = presets[name];
+  if (!state) return;
+  if (state.style) document.getElementById('beatStyle').value = state.style;
+  if (state.key) document.getElementById('beatKey').value = state.key;
+  if (state.scale) document.getElementById('beatScale').value = state.scale;
+  if (state.bpm) { document.getElementById('beatTempo').value = state.bpm; document.getElementById('bpmVal').textContent = state.bpm; }
+  if (state.bars) document.getElementById('beatBars').value = state.bars;
+  if (state.waveform) document.getElementById('synthWaveform').value = state.waveform;
+  if (state.synthFreq) { document.getElementById('synthNote').value = state.synthFreq; document.getElementById('freqVal').textContent = state.synthFreq+'Hz'; }
+  if (state.synthAttack) document.getElementById('synthAttack').value = state.synthAttack;
+  if (state.synthDecay) document.getElementById('synthDecay').value = state.synthDecay;
+  if (state.synthSustain) document.getElementById('synthSustain').value = state.synthSustain;
+  if (state.synthRelease) document.getElementById('synthRelease').value = state.synthRelease;
+  if (state.synthFilter) document.getElementById('synthFilter').value = state.synthFilter;
+  if (state.synthVolume) document.getElementById('synthVolume').value = state.synthVolume;
+  if (state.masterVol) { setMasterVol(parseFloat(state.masterVol)); document.getElementById('masterDb').textContent = (Math.round(20*Math.log10(state.masterVol||0.001)*10)/10)+'dB'; }
+  if (state.llmProvider) document.getElementById('llmProvider').value = state.llmProvider;
+  if (state.llmEndpoint) document.getElementById('llmEndpoint').value = state.llmEndpoint;
+  if (state.llmModel) document.getElementById('llmModel').value = state.llmModel;
+  if (state.apiEndpoint) document.getElementById('apiEndpoint').value = state.apiEndpoint;
+  document.getElementById('settingsOutput').textContent = `Loaded preset: ${name}`;
+}
+
+function deletePreset() {
+  const sel = document.getElementById('presetSelect');
+  const name = sel.value;
+  if (!name) return;
+  if (!confirm(`Delete preset "${name}"?`)) return;
+  const presets = JSON.parse(localStorage.getItem('flstudio_presets') || '{}');
+  delete presets[name];
+  localStorage.setItem('flstudio_presets', JSON.stringify(presets));
+  refreshPresetList();
+  document.getElementById('settingsOutput').textContent = `Deleted preset: ${name}`;
+}
+
+function refreshPresetList() {
+  const sel = document.getElementById('presetSelect');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— Select Preset —</option>';
+  const presets = JSON.parse(localStorage.getItem('flstudio_presets') || '{}');
+  Object.keys(presets).sort().forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    sel.appendChild(opt);
+  });
+  if (presets[current]) sel.value = current;
 }
 
 // PROMPT PROCESSING
@@ -589,6 +818,7 @@ async function generateBeat() {
   setAgentState('Beat','working');
   await generateBeatInternal({style,bpm,bars});
   setAgentState('Beat','done');
+  renderPianoRoll();
 }
 
 async function generateBeatInternal(params) {
@@ -655,7 +885,7 @@ function generateBeatLocal(params) {
   const gain = ctx.createGain();
   gain.gain.value = masterVol;
   source.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(masterGain);
   source.start();
   currentOscillators.push(source);
   
@@ -733,7 +963,7 @@ function playSynth() {
     noiseGain.gain.setValueAtTime(volume * 0.3, ctx.currentTime);
     noise.connect(noiseFilter);
     noiseFilter.connect(noiseGain);
-    noiseGain.connect(ctx.destination);
+    noiseGain.connect(masterGain);
     noise.start();
     synthOscillator = noise;
     synthEnvelope = noiseGain;
@@ -759,7 +989,7 @@ function playSynth() {
   
   osc.connect(filter);
   filter.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(masterGain);
   
   osc.start();
   synthOscillator = osc;
@@ -810,7 +1040,7 @@ function startArp() {
     
     osc.connect(filter);
     filter.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(masterGain);
     osc.start();
     osc.stop(ctx.currentTime + 0.15);
     currentOscillators.push(osc);
@@ -839,7 +1069,7 @@ function playChord(type) {
     gain.gain.setValueAtTime(volume / intervals.length, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 2);
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(masterGain);
     osc.start();
     osc.stop(ctx.currentTime + 2);
     currentOscillators.push(osc);
@@ -874,7 +1104,7 @@ function playKey(freq, noteName) {
   
   osc.connect(filter);
   filter.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(masterGain);
   osc.start();
   osc.stop(ctx.currentTime + 0.5 + release);
   currentOscillators.push(osc);
@@ -896,7 +1126,7 @@ function playDrumSound(type) {
     gain.gain.setValueAtTime(0.8 * masterVol, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(masterGain);
     osc.start();
     osc.stop(ctx.currentTime + 0.3);
     currentOscillators.push(osc);
@@ -917,9 +1147,9 @@ function playDrumSound(type) {
     ng.gain.setValueAtTime(0.4 * masterVol, ctx.currentTime);
     ng.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(masterGain);
     noise.connect(ng);
-    ng.connect(ctx.destination);
+    ng.connect(masterGain);
     osc.start();
     noise.start();
     osc.stop(ctx.currentTime + 0.15);
@@ -940,7 +1170,7 @@ function playDrumSound(type) {
     gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
     noise.connect(filter);
     filter.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(masterGain);
     noise.start();
     currentOscillators.push(noise);
   } else if (type === 'clap') {
@@ -965,7 +1195,7 @@ function playDrumSound(type) {
     noise.connect(reverb);
     reverb.connect(rg);
     rg.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(masterGain);
     noise.start();
     currentOscillators.push(noise);
   } else if (type === 'tom') {
@@ -977,7 +1207,7 @@ function playDrumSound(type) {
     gain.gain.setValueAtTime(0.5 * masterVol, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(masterGain);
     osc.start();
     osc.stop(ctx.currentTime + 0.3);
     currentOscillators.push(osc);
@@ -989,7 +1219,7 @@ function playDrumSound(type) {
     gain.gain.setValueAtTime(0.4 * masterVol, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.02);
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(masterGain);
     osc.start();
     osc.stop(ctx.currentTime + 0.02);
     currentOscillators.push(osc);
@@ -1007,7 +1237,7 @@ function playDrumSound(type) {
     gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1.5);
     noise.connect(filter);
     filter.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(masterGain);
     noise.start();
     currentOscillators.push(noise);
   }
@@ -1055,6 +1285,7 @@ function playBinaural(type) {
   const [base, binaural] = freqs[type] || freqs.alpha;
   
   const merger = ctx.createChannelMerger(2);
+  currentOscillators.push(merger);
   [0, 1].forEach(ch => {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -1064,9 +1295,9 @@ function playBinaural(type) {
     osc.connect(gain);
     gain.connect(merger, 0, ch);
     osc.start();
-    currentOscillators.push(osc);
+    currentOscillators.push(osc, gain);
   });
-  merger.connect(ctx.destination);
+  merger.connect(masterGain);
   
   document.getElementById('ambientOutput').textContent = `Binaural ${type} (${base}Hz / ${binaural}Hz)`;
 }
@@ -1085,7 +1316,7 @@ function playSolfeggio(freq) {
   filter.frequency.value = freq * 2;
   osc.connect(filter);
   filter.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(masterGain);
   osc.start();
   currentOscillators.push(osc, filter, gain);
   
@@ -1117,7 +1348,7 @@ function playAmbientSound(type) {
   
   whiteNoise.connect(filter);
   filter.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(masterGain);
   whiteNoise.start();
   currentOscillators.push(whiteNoise);
   
@@ -1132,6 +1363,15 @@ function playChakra(name) {
 }
 
 // SAMPLES
+function handleDropSample(e) {
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('audio/')) {
+    const input = { files: [file] };
+    loadSample(input);
+  }
+}
+
 function loadSample(input) {
   const file = input.files[0];
   if (!file) return;
@@ -1183,7 +1423,7 @@ function playSample() {
   const gain = ctx.createGain();
   gain.gain.value = masterVol;
   source.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(masterGain);
   source.start();
   sampleSource = source;
 }
@@ -1194,8 +1434,14 @@ function stopSample() {
 
 function addSlice() {
   if (!sampleBuffer) return;
-  slices.push({start:0, end:sampleBuffer.duration, label:'Slice '+(slices.length+1)});
-  document.getElementById('samplesOutput').textContent = `Added slice ${slices.length}`;
+  const totalDuration = sampleBuffer.duration;
+  const sliceCount = slices.length;
+  const sliceDuration = totalDuration / Math.max(1, sliceCount + 1);
+  const start = sliceCount * sliceDuration;
+  const end = (sliceCount + 1) * sliceDuration;
+  slices.push({start, end, label:'Slice '+(slices.length+1)});
+  renderSliceMarkers();
+  document.getElementById('samplesOutput').textContent = `Added slice ${slices.length} (${start.toFixed(2)}s - ${end.toFixed(2)}s)`;
 }
 
 function clearSlices() {
@@ -1203,9 +1449,73 @@ function clearSlices() {
   document.getElementById('samplesOutput').textContent = 'Slices cleared';
 }
 
+function renderSliceMarkers() {
+  const container = document.getElementById('chopperWave');
+  container.querySelectorAll('.chopper-slice').forEach(el => el.remove());
+  if (!sampleBuffer || slices.length === 0) return;
+  const duration = sampleBuffer.duration;
+  slices.forEach((s, i) => {
+    const leftPct = (s.start / duration) * 100;
+    const rightPct = (s.end / duration) * 100;
+    const div = document.createElement('div');
+    div.className = 'chopper-slice';
+    div.style.left = leftPct + '%';
+    div.style.width = (rightPct - leftPct) + '%';
+    div.innerHTML = `<span class="label">${s.label}</span>`;
+    div.onclick = (e) => { e.stopPropagation(); playSlice(i); };
+    container.appendChild(div);
+  });
+}
+
+function playSlice(index) {
+  if (!sampleBuffer || index < 0 || index >= slices.length) return;
+  const ctx = getCtx();
+  stopSample();
+  const s = slices[index];
+  const offset = s.start;
+  const duration = s.end - s.start;
+  const source = ctx.createBufferSource();
+  const sliceBuffer = ctx.createBuffer(sampleBuffer.numberOfChannels, Math.ceil(duration * ctx.sampleRate), ctx.sampleRate);
+  for (let ch = 0; ch < sampleBuffer.numberOfChannels; ch++) {
+    const srcData = sampleBuffer.getChannelData(ch);
+    const dstData = sliceBuffer.getChannelData(ch);
+    const startSample = Math.floor(offset * ctx.sampleRate);
+    const len = Math.min(dstData.length, srcData.length - startSample);
+    for (let i = 0; i < len; i++) dstData[i] = srcData[startSample + i];
+  }
+  source.buffer = sliceBuffer;
+  const gain = ctx.createGain();
+  gain.gain.value = masterVol;
+  source.connect(gain);
+  gain.connect(masterGain);
+  source.start();
+  sampleSource = source;
+  document.getElementById('samplesOutput').textContent = `Playing ${s.label}`;
+}
+
 function exportChops() {
   if (slices.length === 0) { document.getElementById('samplesOutput').textContent = 'No slices to export'; return; }
+  slices.forEach((s, i) => {
+    const blob = sliceToWav(s);
+    downloadBlob(blob, `slice_${i+1}_${s.label.replace(/\s+/g,'_')}.wav`, 'audio/wav');
+  });
   document.getElementById('samplesOutput').textContent = `Exported ${slices.length} slices!`;
+}
+
+function sliceToWav(s) {
+  if (!sampleBuffer) return new Blob([]);
+  const ctx = getCtx();
+  const offset = s.start;
+  const duration = s.end - s.start;
+  const buf = ctx.createBuffer(sampleBuffer.numberOfChannels, Math.ceil(duration * ctx.sampleRate), ctx.sampleRate);
+  for (let ch = 0; ch < sampleBuffer.numberOfChannels; ch++) {
+    const srcData = sampleBuffer.getChannelData(ch);
+    const dstData = buf.getChannelData(ch);
+    const startSample = Math.floor(offset * ctx.sampleRate);
+    const len = Math.min(dstData.length, srcData.length - startSample);
+    for (let i = 0; i < len; i++) dstData[i] = srcData[startSample + i];
+  }
+  return audioBufferToWav(buf);
 }
 
 async function previewSample(path) {
@@ -1220,7 +1530,7 @@ async function previewSample(path) {
     const gain = ctx.createGain();
     gain.gain.value = masterVol;
     source.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(masterGain);
     source.start();
     currentOscillators.push(source);
   } catch(e) {}
@@ -1272,7 +1582,10 @@ function exportMp3() {
 
 function exportMidi() {
   generateMidiFile();
-  document.getElementById('exportOutput').textContent = 'MIDI file generated! Click Export MIDI in the Beats tab.';
+  const style = document.getElementById('beatStyle').value;
+  const key = document.getElementById('beatKey').value;
+  const tempo = document.getElementById('beatTempo').value;
+  document.getElementById('exportOutput').textContent = `MIDI exported: ${style} ${key} @ ${tempo}BPM — file downloaded!`;
 }
 
 function exportStems() {
@@ -1337,6 +1650,86 @@ function downloadBlob(blob, filename, mimeType) {
 
 function applyMastering() {
   document.getElementById('mixOutput').textContent = 'Mastering applied! (simulated)';
+}
+
+// Piano Roll
+function renderPianoRoll() {
+  const canvas = document.getElementById('pianoRollCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width = canvas.offsetWidth || 800;
+  const h = canvas.height = 120;
+  
+  const key = document.getElementById('beatKey').value;
+  const scale = document.getElementById('beatScale').value;
+  const bars = parseInt(document.getElementById('beatBars').value) || 4;
+  const keyNum = keyNotes[key] || 0;
+  const scaleNotes = (scaleOffsets[scale] || scaleOffsets.minor).map(o => (keyNum + o) % 12);
+  
+  // White keys only (4 octaves)
+  const whiteKeys = [0,2,4,5,7,9,11];
+  const keyLabels = ['C','D','E','F','G','A','B'];
+  const keyColors = {};
+  scaleNotes.forEach(n => {
+    const idx = whiteKeys.indexOf(n % 12);
+    if (idx >= 0) keyColors[idx] = true;
+  });
+  
+  const octaves = 4;
+  const totalKeys = whiteKeys.length * octaves;
+  const keyHeight = h / totalKeys;
+  
+  ctx.clearRect(0, 0, w, h);
+  
+  // Draw keys
+  for (let i = 0; i < totalKeys; i++) {
+    const y = i * keyHeight;
+    const noteIdx = i % whiteKeys.length;
+    const isInScale = keyColors[noteIdx];
+    ctx.fillStyle = isInScale ? 'rgba(0,212,255,0.2)' : 'rgba(255,255,255,0.05)';
+    ctx.fillRect(0, y, w, keyHeight);
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+    ctx.strokeRect(0, y, w, keyHeight);
+    
+    // Label
+    if (i % whiteKeys.length === 0) {
+      ctx.fillStyle = isInScale ? '#00d4ff' : '#555';
+      ctx.font = '9px monospace';
+      ctx.fillText(keyLabels[noteIdx] + Math.floor(4 + octaves - 1 - i / whiteKeys.length), 4, y + keyHeight - 2);
+    }
+  }
+  
+  // Draw note blocks for each bar
+  const barWidth = w / Math.max(bars, 1);
+  const noteHeight = keyHeight * 0.7;
+  const melodyNotes = scaleNotes.map((n, idx) => {
+    const octave = 2 + Math.floor(idx / whiteKeys.length);
+    const keyIdx = whiteKeys.indexOf(n % 12);
+    return { noteIdx: keyIdx >= 0 ? keyIdx + (octaves - 1 - octave) * whiteKeys.length : -1, freq: n };
+  });
+  
+  for (let bar = 0; bar < bars; bar++) {
+    for (let beat = 0; beat < 4; beat++) {
+      const noteInfo = melodyNotes[(bar * 4 + beat) % melodyNotes.length];
+      if (noteInfo.noteIdx < 0) continue;
+      const x = bar * barWidth + (beat / 4) * barWidth;
+      const y = noteInfo.noteIdx * keyHeight + (keyHeight - noteHeight) / 2;
+      ctx.fillStyle = 'rgba(241,7,163,0.8)';
+      ctx.fillRect(x + 2, y, barWidth / 4 - 4, noteHeight);
+      ctx.fillStyle = 'rgba(241,7,163,0.4)';
+      ctx.fillRect(x + 2, y, barWidth / 4 - 4, noteHeight);
+    }
+  }
+  
+  // Bar lines
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  for (let bar = 1; bar < bars; bar++) {
+    const x = bar * barWidth;
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, h);
+    ctx.stroke();
+  }
 }
 
 // MIDI Generation
@@ -1508,22 +1901,25 @@ async function testLlmConnection() {
 async function testApiConnection() {
   const endpoint = document.getElementById('apiEndpoint').value;
   
-  try {
-    const res = await fetch(endpoint + '/');
-    if (res.ok) {
-      document.getElementById('apiStatus').className = 'status-badge online';
-      document.getElementById('apiStatus').textContent = 'API Connected';
-      document.getElementById('apiTestResult').textContent = 'Connected!';
-      document.getElementById('apiTestResult').style.color = 'var(--success)';
-    } else {
-      throw new Error('Status: ' + res.status);
-    }
-  } catch(e) {
-    document.getElementById('apiStatus').className = 'status-badge offline';
-    document.getElementById('apiStatus').textContent = 'API Disconnected';
-    document.getElementById('apiTestResult').textContent = 'Not connected';
-    document.getElementById('apiTestResult').style.color = '#ff4444';
+  const paths = ['/', '/api/hello', '/api/status', '/health', '/api'];
+  
+  for (const path of paths) {
+    try {
+      const res = await fetch(endpoint + path);
+      if (res.ok) {
+        document.getElementById('apiStatus').className = 'status-badge online';
+        document.getElementById('apiStatus').textContent = 'API Connected';
+        document.getElementById('apiTestResult').textContent = 'Connected!';
+        document.getElementById('apiTestResult').style.color = 'var(--success)';
+        return;
+      }
+    } catch(e) {}
   }
+  
+  document.getElementById('apiStatus').className = 'status-badge offline';
+  document.getElementById('apiStatus').textContent = 'API Disconnected';
+  document.getElementById('apiTestResult').textContent = 'Not connected';
+  document.getElementById('apiTestResult').style.color = '#ff4444';
 }
 
 // TAB SWITCHING
@@ -1535,10 +1931,14 @@ function switchTab(name, el) {
 }
 
 // Connection test on load
-setTimeout(() => {
-  testApiConnection();
-  testLlmConnection();
-}, 1000);
+document.addEventListener('DOMContentLoaded', () => {
+  refreshPresetList();
+  renderPianoRoll();
+  setTimeout(() => {
+    testApiConnection();
+    testLlmConnection();
+  }, 500);
+});
 </script>
 </body>
 </html>
