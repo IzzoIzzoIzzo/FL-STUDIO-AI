@@ -173,7 +173,7 @@ button:hover{transform:scale(1.03)}
   </select>
   <button class="btn-ghost" onclick="savePreset()" style="font-size:.8rem;padding:6px 14px">Save</button>
   <button class="btn-ghost" onclick="deletePreset()" style="font-size:.8rem;padding:6px 14px">Delete</button>
-  <span style="color:#666;font-size:.8rem;margin-left:auto">Click pads or say a prompt → music plays</span>
+  <span style="color:#666;font-size:.8rem;margin-left:auto">Click pads or say a prompt → music plays · Keys: <kbd style="background:rgba(255,255,255,0.1);padding:1px 6px;border-radius:4px;font-size:.75rem">Space</kbd> Play/Stop · <kbd style="background:rgba(255,255,255,0.1);padding:1px 6px;border-radius:4px;font-size:.75rem">1-8</kbd> Drums · <kbd style="background:rgba(255,255,255,0.1);padding:1px 6px;border-radius:4px;font-size:.75rem">T</kbd> Tap</span>
 </div>
 
 <div class="tabs">
@@ -301,6 +301,10 @@ button:hover{transform:scale(1.03)}
       <button class="btn-play" onclick="playDrumPattern('lofi')">LoFi Pattern</button>
       <button class="btn-stop" onclick="stopPattern()">Stop</button>
     </div>
+    <div class="control-row">
+      <button class="btn-ghost" onclick="tapTempo()">Tap Tempo</button>
+      <span style="color:#888;font-size:.85rem">Press T key or click to tap BPM</span>
+    </div>
   </div>
   <div class="output-box" id="drumsOutput">Click a drum pad or pattern...</div>
 </div>
@@ -316,12 +320,20 @@ button:hover{transform:scale(1.03)}
       <div class="control-row"><label>Treble</label><input type="range" min="-12" max="12" value="0" step="0.5" style="flex:2"/></div>
     </div>
     <div class="control-group">
+      <h3>Compressor</h3>
+      <div class="control-row"><label>Threshold</label><input type="range" min="-60" max="0" value="-24" step="1" oninput="if(compressorNode)compressorNode.threshold.value=this.value;document.getElementById('compThreshold').textContent=this.value+'dB'" style="flex:2"/><span id="compThreshold" style="color:var(--primary);min-width:40px">-24dB</span></div>
+      <div class="control-row"><label>Ratio</label><input type="range" min="1" max="20" value="4" step="0.5" oninput="if(compressorNode)compressorNode.ratio.value=this.value;document.getElementById('compRatio').textContent=this.value+':1'" style="flex:2"/><span id="compRatio" style="color:var(--primary);min-width:40px">4:1</span></div>
+      <div class="control-row"><label>Knee</label><input type="range" min="0" max="40" value="30" step="1" oninput="if(compressorNode)compressorNode.knee.value=this.value" style="flex:2"/></div>
+      <div class="control-row"><label>Attack</label><input type="range" min="0" max="1" value="0.003" step="0.001" oninput="if(compressorNode)compressorNode.attack.value=this.value" style="flex:2"/></div>
+      <div class="control-row"><label>Release</label><input type="range" min="0" max="1" value="0.25" step="0.01" oninput="if(compressorNode)compressorNode.release.value=this.value" style="flex:2"/></div>
+    </div>
+    <div class="control-group">
       <h3>Mastering</h3>
       <div class="control-row">
         <label>Mode</label>
-        <select style="flex:2"><option>Analog</option><option>Modern</option><option>Vinyl</option><option>Cassette</option><option>Tape</option><option>Digital</option></select>
+        <select id="masteringMode" style="flex:2"><option>Analog</option><option>Modern</option><option>Vinyl</option><option>Cassette</option><option>Tape</option><option>Digital</option></select>
       </div>
-      <div class="control-row"><label>LUFS</label><input type="range" min="-20" max="-8" value="-14" step="0.5" style="flex:2"/><span style="color:#888">-14</span></div>
+      <div class="control-row"><label>LUFS</label><input type="range" id="lufsSlider" min="-20" max="-8" value="-14" step="0.5" oninput="document.getElementById('lufsVal').textContent=this.value" style="flex:2"/><span id="lufsVal" style="color:#888">-14</span></div>
       <div class="control-row"><button class="btn-play" onclick="applyMastering()">Apply Mastering</button></div>
     </div>
   </div>
@@ -393,6 +405,8 @@ button:hover{transform:scale(1.03)}
     <div class="card" onclick="exportMp3()"><h3>Export MP3</h3><p>Compressed audio</p></div>
     <div class="card" onclick="exportMidi()"><h3>Export MIDI</h3><p>Pattern data for DAW</p></div>
     <div class="card" onclick="exportStems()"><h3>Export Stems</h3><p>Individual track stems</p></div>
+    <div class="card" onclick="startRecording()" style="border-color:var(--accent)"><h3>Record Session</h3><p>Capture live audio (click again to stop)</p></div>
+    <div class="card" onclick="stopRecording()"><h3>Stop Recording</h3><p>Download recorded session</p></div>
   </div>
   <div class="output-box" id="exportOutput">Select export format...</div>
 </div>
@@ -443,12 +457,16 @@ button:hover{transform:scale(1.03)}
 let audioContext = null;
 let currentOscillators = [];
 let masterVol = 0.8;
+let tapTimestamps = [];
+let mediaRecorder = null;
+let recordedChunks = [];
 let sampleBuffer = null;
 let sampleSource = null;
 let slices = [];
 let patternInterval = null;
 let analyserNode = null;
 let visualizerId = null;
+let compressorNode = null;
 
 let masterGain = null;
 
@@ -457,9 +475,16 @@ function getCtx() {
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
     masterGain = audioContext.createGain();
     masterGain.gain.value = masterVol;
+    compressorNode = audioContext.createDynamicsCompressor();
+    compressorNode.threshold.value = -24;
+    compressorNode.knee.value = 30;
+    compressorNode.ratio.value = 4;
+    compressorNode.attack.value = 0.003;
+    compressorNode.release.value = 0.25;
     analyserNode = audioContext.createAnalyser();
     analyserNode.fftSize = 256;
-    masterGain.connect(analyserNode);
+    masterGain.connect(compressorNode);
+    compressorNode.connect(analyserNode);
     analyserNode.connect(audioContext.destination);
     startVisualizer();
   }
@@ -527,67 +552,6 @@ function startVisualizer() {
     visualizerId = requestAnimationFrame(draw);
   }
   draw();
-}
-  try {
-    if (source && source.connect) {
-      source.connect(analyserNode);
-      analyserNode.connect(masterGain);
-    }
-  } catch(e) {}
-  
-  if (visualizerId) cancelAnimationFrame(visualizerId);
-  
-  const canvas = document.getElementById('waveformCanvas');
-  if (!canvas) return;
-  const cx = canvas.getContext('2d');
-  const w = canvas.width = canvas.offsetWidth || 800;
-  const h = canvas.height = 100;
-  
-  function draw() {
-    if (!analyserNode) return;
-    const data = new Uint8Array(analyserNode.frequencyBinCount);
-    analyserNode.getByteTimeDomainData(data);
-    
-    cx.fillStyle = '#0f0c29';
-    cx.fillRect(0, 0, w, h);
-    cx.lineWidth = 2;
-    cx.strokeStyle = '#00d4ff';
-    cx.beginPath();
-    
-    const sliceWidth = w / data.length;
-    let x = 0;
-    for (let i = 0; i < data.length; i++) {
-      const v = data[i] / 128.0;
-      const y = v * h / 2;
-      if (i === 0) cx.moveTo(x, y);
-      else cx.lineTo(x, y);
-      x += sliceWidth;
-    }
-    cx.stroke();
-    
-    // Frequency bars
-    const freqData = new Uint8Array(analyserNode.frequencyBinCount);
-    analyserNode.getByteFrequencyData(freqData);
-    cx.fillStyle = 'rgba(123, 47, 247, 0.4)';
-    const barWidth = w / 64;
-    for (let i = 0; i < 64; i++) {
-      const val = freqData[i] / 256;
-      cx.fillRect(i * barWidth, h - val * h, barWidth - 1, val * h);
-    }
-    
-    visualizerId = requestAnimationFrame(draw);
-  }
-  draw();
-}
-
-function stopVisualizer() {
-  if (visualizerId) { cancelAnimationFrame(visualizerId); visualizerId = null; }
-  const canvas = document.getElementById('waveformCanvas');
-  if (canvas) {
-    const cx = canvas.getContext('2d');
-    cx.fillStyle = '#0f0c29';
-    cx.fillRect(0, 0, canvas.width, canvas.height);
-  }
 }
 
 function setPrompt(text) {
@@ -931,7 +895,6 @@ async function generateMelodyInternal(params) {
 // SYNTH
 let synthOscillator = null;
 let synthEnvelope = null;
-let arpInterval = null;
 let arpIndex = 0;
 const arpNotes = [0, 4, 7, 12, 7, 4];
 
@@ -1920,6 +1883,80 @@ async function testApiConnection() {
   document.getElementById('apiStatus').textContent = 'API Disconnected';
   document.getElementById('apiTestResult').textContent = 'Not connected';
   document.getElementById('apiTestResult').style.color = '#ff4444';
+}
+
+// Connection test on load
+document.addEventListener('DOMContentLoaded', () => {
+  refreshPresetList();
+  renderPianoRoll();
+  setTimeout(() => {
+    testApiConnection();
+    testLlmConnection();
+  }, 500);
+});
+
+// KEYBOARD SHORTCUTS
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+  switch(e.code) {
+    case 'Space': e.preventDefault(); const a = document.querySelector('.panel.active'); if (a) { const playing = document.getElementById('nowPlaying').textContent; if (playing && playing !== '—') stopAllAudio(); else generateBeat(); } break;
+    case 'KeyG': generateBeat(); break;
+    case 'KeyS': stopAllAudio(); break;
+    case 'KeyM': generateMidiFile(); renderPianoRoll(); break;
+    case 'KeyT': tapTempo(); break;
+    case 'Digit1': playDrumSound('kick'); break;
+    case 'Digit2': playDrumSound('snare'); break;
+    case 'Digit3': playDrumSound('hihat'); break;
+    case 'Digit4': playDrumSound('openhat'); break;
+    case 'Digit5': playDrumSound('clap'); break;
+    case 'Digit6': playDrumSound('tom'); break;
+    case 'Digit7': playDrumSound('rim'); break;
+    case 'Digit8': playDrumSound('crash'); break;
+  }
+});
+
+// BPM TAP TEMPO
+function tapTempo() {
+  const now = Date.now();
+  tapTimestamps = tapTimestamps.filter(t => now - t < 3000);
+  tapTimestamps.push(now);
+  if (tapTimestamps.length >= 4) {
+    const intervals = [];
+    for (let i = 1; i < tapTimestamps.length; i++) intervals.push(tapTimestamps[i] - tapTimestamps[i-1]);
+    const avg = intervals.reduce((a,b) => a+b, 0) / intervals.length;
+    const bpm = Math.round(60000 / avg);
+    if (bpm >= 60 && bpm <= 200) {
+      document.getElementById('beatTempo').value = bpm;
+      document.getElementById('bpmVal').textContent = bpm;
+      document.getElementById('drumsOutput').textContent = `Tap tempo: ${bpm} BPM`;
+    }
+  }
+}
+
+// SESSION RECORDER
+function startRecording() {
+  if (!audioContext) { document.getElementById('exportOutput').textContent = 'No audio context. Play something first.'; return; }
+  const dest = audioContext.createMediaStreamDestination();
+  const stream = dest.stream;
+  // Tap into master chain
+  if (masterGain) masterGain.connect(dest);
+  mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+  recordedChunks = [];
+  mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+  mediaRecorder.onstop = () => {
+    const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+    downloadBlob(blob, `session_recording_${Date.now()}.webm`, 'audio/webm');
+    document.getElementById('exportOutput').textContent = 'Session recorded and downloaded!';
+    if (masterGain) masterGain.disconnect(dest);
+  };
+  mediaRecorder.start();
+  document.getElementById('exportOutput').textContent = 'Recording... Click Stop when done.';
+}
+
+function stopRecording() {
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    mediaRecorder.stop();
+  }
 }
 
 // TAB SWITCHING
