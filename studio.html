@@ -35,7 +35,7 @@ h1{font-size:2.5rem;background:linear-gradient(90deg,var(--primary),var(--second
 .agent-strip{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
 .agent-chip{display:flex;align-items:center;gap:6px;padding:8px 16px;background:var(--bg-card);border-radius:20px;font-size:.85rem;border:1px solid transparent;transition:all .3s}
 .agent-chip.active{border-color:var(--primary);background:rgba(0,212,255,0.1)}
-.agent-chip.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.agent-chip .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
 .agent-chip .dot.idle{background:#555}
 .agent-chip .dot.working{background:var(--primary);animation:pulse 1s infinite}
 .agent-chip .dot.done{background:var(--success)}
@@ -315,9 +315,9 @@ button:hover{transform:scale(1.03)}
     <div class="control-group">
       <h3>Mix Controls</h3>
       <div class="control-row"><label>Master Vol</label><input type="range" min="0" max="1" value="0.8" step="0.01" oninput="setMasterVol(this.value);document.getElementById('masterDb').textContent=(Math.round(20*Math.log10(this.value||0.001)*10)/10)+'dB'" style="flex:2"/><span id="masterDb" style="color:var(--primary);min-width:50px">-1.9dB</span></div>
-      <div class="control-row"><label>Bass</label><input type="range" min="-12" max="12" value="0" step="0.5" style="flex:2"/><span style="color:#888;min-width:30px">0dB</span></div>
-      <div class="control-row"><label>Mid</label><input type="range" min="-12" max="12" value="0" step="0.5" style="flex:2"/></div>
-      <div class="control-row"><label>Treble</label><input type="range" min="-12" max="12" value="0" step="0.5" style="flex:2"/></div>
+      <div class="control-row"><label>Bass</label><input type="range" min="-12" max="12" value="0" step="0.5" oninput="if(eqBass){eqBass.gain.value=this.value}this.nextElementSibling.textContent=this.value+'dB'" style="flex:2"/><span style="color:var(--primary);min-width:30px">0dB</span></div>
+      <div class="control-row"><label>Mid</label><input type="range" min="-12" max="12" value="0" step="0.5" oninput="if(eqMid){eqMid.gain.value=this.value}this.nextElementSibling.textContent=this.value+'dB'" style="flex:2"/><span style="color:var(--primary);min-width:30px">0dB</span></div>
+      <div class="control-row"><label>Treble</label><input type="range" min="-12" max="12" value="0" step="0.5" oninput="if(eqTreble){eqTreble.gain.value=this.value}this.nextElementSibling.textContent=this.value+'dB'" style="flex:2"/><span style="color:var(--primary);min-width:30px">0dB</span></div>
     </div>
     <div class="control-group">
       <h3>Compressor</h3>
@@ -467,6 +467,14 @@ let patternInterval = null;
 let analyserNode = null;
 let visualizerId = null;
 let compressorNode = null;
+let fxReverbNode = null;
+let fxDelayNode = null;
+let fxDistortionNode = null;
+let lfoOsc = null;
+let lfoGain = null;
+let eqBass = null;
+let eqMid = null;
+let eqTreble = null;
 
 let masterGain = null;
 
@@ -483,9 +491,68 @@ function getCtx() {
     compressorNode.release.value = 0.25;
     analyserNode = audioContext.createAnalyser();
     analyserNode.fftSize = 256;
-    masterGain.connect(compressorNode);
+    
+    // EQ shelving filters
+    eqBass = audioContext.createBiquadFilter();
+    eqBass.type = 'lowshelf';
+    eqBass.frequency.value = 250;
+    eqBass.gain.value = 0;
+    
+    eqMid = audioContext.createBiquadFilter();
+    eqMid.type = 'peaking';
+    eqMid.frequency.value = 1000;
+    eqMid.Q.value = 1;
+    eqMid.gain.value = 0;
+    
+    eqTreble = audioContext.createBiquadFilter();
+    eqTreble.type = 'highshelf';
+    eqTreble.frequency.value = 4000;
+    eqTreble.gain.value = 0;
+    
+    masterGain.connect(eqBass);
+    eqBass.connect(eqMid);
+    eqMid.connect(eqTreble);
+    eqTreble.connect(compressorNode);
     compressorNode.connect(analyserNode);
     analyserNode.connect(audioContext.destination);
+    
+    // FX nodes
+    fxReverbNode = audioContext.createConvolver();
+    const irLen = audioContext.sampleRate * 1.5;
+    const irBuffer = audioContext.createBuffer(2, irLen, audioContext.sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+      const data = irBuffer.getChannelData(ch);
+      for (let i = 0; i < irLen; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (audioContext.sampleRate * 0.3));
+    }
+    fxReverbNode.buffer = irBuffer;
+    
+    fxDelayNode = audioContext.createDelay(1.0);
+    fxDelayNode.delayTime.value = 0.25;
+    const delayFeedback = audioContext.createGain();
+    delayFeedback.gain.value = 0.3;
+    fxDelayNode.connect(delayFeedback);
+    delayFeedback.connect(fxDelayNode);
+    
+    fxDistortionNode = audioContext.createWaveShaper();
+    function makeDistCurve(amount) {
+      const n = 256;
+      const curve = new Float32Array(n);
+      for (let i = 0; i < n; i++) {
+        const x = (i * 2) / n - 1;
+        curve[i] = ((3 + amount) * x * 20 * (Math.PI / 180)) / (Math.PI + amount * Math.abs(x));
+      }
+      return curve;
+    }
+    fxDistortionNode.curve = makeDistCurve(50);
+    fxDistortionNode.oversample = 'none';
+    
+    lfoOsc = audioContext.createOscillator();
+    lfoOsc.frequency.value = 2;
+    lfoGain = audioContext.createGain();
+    lfoGain.gain.value = 1000;
+    lfoOsc.connect(lfoGain);
+    lfoOsc.start();
+    
     startVisualizer();
   }
   if (audioContext.state === 'suspended') audioContext.resume();
@@ -631,6 +698,7 @@ function loadPreset(name) {
   if (state.llmEndpoint) document.getElementById('llmEndpoint').value = state.llmEndpoint;
   if (state.llmModel) document.getElementById('llmModel').value = state.llmModel;
   if (state.apiEndpoint) document.getElementById('apiEndpoint').value = state.apiEndpoint;
+  renderPianoRoll();
   document.getElementById('settingsOutput').textContent = `Loaded preset: ${name}`;
 }
 
@@ -667,49 +735,58 @@ async function processPrompt() {
   
   document.getElementById('beatOutput').textContent = 'Processing: "' + prompt + '"\n';
   
-  // Try LLM interpretation first
-  let interpretation = null;
-  setAgentState('Creative','working');
+  // Reset all agents to idle first
+  ['Creative','Beat','Melody','Mix','Master'].forEach(a => setAgentState(a, 'idle'));
   
   try {
-    interpretation = await interpretPromptWithLLM(prompt);
+    // Try LLM interpretation first
+    let interpretation = null;
+    setAgentState('Creative','working');
+    
+    try {
+      interpretation = await interpretPromptWithLLM(prompt);
+    } catch(e) {
+      document.getElementById('beatOutput').textContent += 'LLM not available, using local parser.\n';
+    }
+    setAgentState('Creative','done');
+    
+    // Parse parameters (from LLM or fallback)
+    const params = interpretation || parsePromptLocally(prompt);
+    
+    document.getElementById('beatOutput').textContent = 'Interpretation:\n' + JSON.stringify(params, null, 2) + '\n\n';
+    
+    // Set UI controls
+    if (params.style) document.getElementById('beatStyle').value = params.style;
+    if (params.bpm) { document.getElementById('beatTempo').value = params.bpm; document.getElementById('bpmVal').textContent = params.bpm; }
+    if (params.key) document.getElementById('beatKey').value = params.key;
+    if (params.scale) document.getElementById('beatScale').value = params.scale;
+    renderPianoRoll();
+    
+    // Generate components
+    setAgentState('Beat','working');
+    if (params.style) {
+      document.getElementById('beatOutput').textContent += 'Beat Agent: Generating ' + params.style + ' beat...\n';
+      await generateBeatInternal(params);
+    }
+    setAgentState('Beat','done');
+    
+    setAgentState('Melody','working');
+    document.getElementById('beatOutput').textContent += 'Melody Agent: Creating harmony...\n';
+    await generateMelodyInternal(params);
+    setAgentState('Melody','done');
+    
+    if (document.getElementById('agentMixEnabled')?.checked) {
+      setAgentState('Mix','working');
+      document.getElementById('beatOutput').textContent += 'Mix Agent: Balancing tracks...\n';
+      setAgentState('Mix','done');
+    }
+    
+    document.getElementById('beatOutput').textContent += '\nDone! Check the Beats tab to hear your creation.';
   } catch(e) {
-    document.getElementById('beatOutput').textContent += 'LLM not available, using local parser.\n';
+    document.getElementById('beatOutput').textContent += '\nError: ' + (e.message || 'Unknown error');
+  } finally {
+    ['Creative','Beat','Melody','Mix','Master'].forEach(a => setAgentState(a, 'idle'));
   }
-  setAgentState('Creative','done');
-  
-  // Parse parameters (from LLM or fallback)
-  const params = interpretation || parsePromptLocally(prompt);
-  
-  document.getElementById('beatOutput').textContent = 'Interpretation:\n' + JSON.stringify(params, null, 2) + '\n\n';
-  
-  // Set UI controls
-  if (params.style) document.getElementById('beatStyle').value = params.style;
-  if (params.bpm) { document.getElementById('beatTempo').value = params.bpm; document.getElementById('bpmVal').textContent = params.bpm; }
-  if (params.key) document.getElementById('beatKey').value = params.key;
-  if (params.scale) document.getElementById('beatScale').value = params.scale;
-  
-  // Generate components
-  setAgentState('Beat','working');
-  if (params.style) {
-    document.getElementById('beatOutput').textContent += 'Beat Agent: Generating ' + params.style + ' beat...\n';
-    await generateBeatInternal(params);
-  }
-  setAgentState('Beat','done');
-  
-  setAgentState('Melody','working');
-  document.getElementById('beatOutput').textContent += 'Melody Agent: Creating harmony...\n';
-  await generateMelodyInternal(params);
-  setAgentState('Melody','done');
-  
-  if (document.getElementById('agentMixEnabled')?.checked) {
-    setAgentState('Mix','working');
-    document.getElementById('beatOutput').textContent += 'Mix Agent: Balancing tracks...\n';
-    setAgentState('Mix','done');
-  }
-  
-  setAgentState('Creative','idle');
-  document.getElementById('beatOutput').textContent += '\nDone! Check the Beats tab to hear your creation.';
 }
 
 function parsePromptLocally(prompt) {
@@ -898,6 +975,53 @@ let synthEnvelope = null;
 let arpIndex = 0;
 const arpNotes = [0, 4, 7, 12, 7, 4];
 
+function connectSynthToMaster(source) {
+  let dest = source;
+  const ctx = getCtx();
+  
+  if (document.getElementById('fxFilter')?.checked && lfoGain) {
+    const lfoFilter = ctx.createBiquadFilter();
+    lfoFilter.type = 'lowpass';
+    lfoFilter.frequency.value = 2000;
+    lfoGain.connect(lfoFilter.frequency);
+    dest.connect(lfoFilter);
+    dest = lfoFilter;
+    currentOscillators.push(lfoFilter);
+  }
+  
+  if (document.getElementById('fxDistortion')?.checked && fxDistortionNode) {
+    const distGain = ctx.createGain();
+    distGain.gain.value = 0.7;
+    dest.connect(distGain);
+    distGain.connect(fxDistortionNode);
+    dest = fxDistortionNode;
+    currentOscillators.push(distGain);
+  }
+  
+  const fxSend = ctx.createGain();
+  fxSend.gain.value = 0.3;
+  dest.connect(fxSend);
+  dest.connect(masterGain);
+  
+  if (document.getElementById('fxReverb')?.checked && fxReverbNode) {
+    const reverbGain = ctx.createGain();
+    reverbGain.gain.value = 0.4;
+    fxSend.connect(fxReverbNode);
+    fxReverbNode.connect(reverbGain);
+    reverbGain.connect(masterGain);
+    currentOscillators.push(reverbGain);
+  }
+  
+  if (document.getElementById('fxDelay')?.checked && fxDelayNode) {
+    const delayGain = ctx.createGain();
+    delayGain.gain.value = 0.3;
+    fxSend.connect(fxDelayNode);
+    fxDelayNode.connect(delayGain);
+    delayGain.connect(masterGain);
+    currentOscillators.push(delayGain);
+  }
+}
+
 function playSynth() {
   const ctx = getCtx();
   stopSynth();
@@ -952,7 +1076,7 @@ function playSynth() {
   
   osc.connect(filter);
   filter.connect(gain);
-  gain.connect(masterGain);
+  connectSynthToMaster(gain);
   
   osc.start();
   synthOscillator = osc;
@@ -1003,7 +1127,7 @@ function startArp() {
     
     osc.connect(filter);
     filter.connect(gain);
-    gain.connect(masterGain);
+    connectSynthToMaster(gain);
     osc.start();
     osc.stop(ctx.currentTime + 0.15);
     currentOscillators.push(osc);
@@ -1032,7 +1156,7 @@ function playChord(type) {
     gain.gain.setValueAtTime(volume / intervals.length, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 2);
     osc.connect(gain);
-    gain.connect(masterGain);
+    connectSynthToMaster(gain);
     osc.start();
     osc.stop(ctx.currentTime + 2);
     currentOscillators.push(osc);
@@ -1067,7 +1191,7 @@ function playKey(freq, noteName) {
   
   osc.connect(filter);
   filter.connect(gain);
-  gain.connect(masterGain);
+  connectSynthToMaster(gain);
   osc.start();
   osc.stop(ctx.currentTime + 0.5 + release);
   currentOscillators.push(osc);
@@ -1222,7 +1346,7 @@ function playDrumPattern(style) {
   
   const pattern = patterns[style] || patterns.trap;
   const bpm = parseInt(document.getElementById('beatTempo').value);
-  const interval = (60 / bpm) * 500; // ms
+  const interval = (60 / bpm) * 1000 / 4; // ms per 16th note
   let step = 0;
   
   document.getElementById('drumsOutput').textContent = `Playing ${style} pattern at ${bpm}BPM`;
@@ -1500,43 +1624,90 @@ async function previewSample(path) {
 }
 
 function detectBpm() {
-  document.getElementById('sampleBpm').value = Math.floor(120 + Math.random() * 40);
+  if (!sampleBuffer) { document.getElementById('samplesOutput').textContent = 'Load a sample first!'; return; }
+  // Simple BPM detection via autocorrelation
+  const data = sampleBuffer.getChannelData(0);
+  const sampleRate = sampleBuffer.sampleRate;
+  const minBpm = 60, maxBpm = 200;
+  const minLag = Math.round(sampleRate * 60 / maxBpm);
+  const maxLag = Math.round(sampleRate * 60 / minBpm);
+  const step = 2;
+  let bestLag = minLag;
+  let bestCorr = 0;
+  
+  for (let lag = minLag; lag <= maxLag; lag += step) {
+    let corr = 0;
+    const len = Math.min(data.length, sampleRate * 2);
+    for (let i = 0; i < len - lag; i += 64) {
+      corr += Math.abs(data[i] * data[i + lag]);
+    }
+    corr /= Math.ceil((len - lag) / 64);
+    if (corr > bestCorr) { bestCorr = corr; bestLag = lag; }
+  }
+  
+  const bpm = Math.round(60 * sampleRate / bestLag);
+  if (bpm >= 40 && bpm <= 300) {
+    document.getElementById('sampleBpm').value = bpm;
+    document.getElementById('samplesOutput').textContent = `Detected BPM: ${bpm}`;
+  } else {
+    document.getElementById('samplesOutput').textContent = `BPM detection uncertain, try manual: ${bpm}`;
+  }
 }
 
 // EXPORT
 function exportWav() {
   const ctx = getCtx();
-  const length = ctx.sampleRate * 4;
-  const buffer = ctx.createBuffer(2, length, ctx.sampleRate);
   const bpm = parseInt(document.getElementById('beatTempo').value) || 140;
   const bars = parseInt(document.getElementById('beatBars').value) || 4;
+  const style = document.getElementById('beatStyle').value;
+  
+  const beatDuration = (bars * 4 * 60) / bpm;
+  const length = ctx.sampleRate * beatDuration;
+  const buffer = ctx.createBuffer(2, length, ctx.sampleRate);
+  
+  const patterns = {
+    trap: { kick:[1,0,0,1,0,0,1,0], snare:[0,0,1,0,0,0,1,0], hat:[1,1,1,1,1,1,1,1] },
+    house: { kick:[1,0,1,0,1,0,1,0], snare:[0,0,1,0,0,0,1,0], hat:[1,0,1,0,1,0,1,0] },
+    dnb: { kick:[1,0,1,0,1,0,1,0], snare:[0,0,0,0,1,0,0,0], hat:[1,1,1,1,1,1,1,1] },
+    lofi: { kick:[1,0,0,1,0,0,0,1], snare:[0,0,1,0,0,0,1,0], hat:[1,0,1,0,0,0,1,0] }
+  };
+  const pat = patterns[style] || patterns.trap;
   
   for (let ch = 0; ch < 2; ch++) {
     const data = buffer.getChannelData(ch);
     for (let i = 0; i < length; i++) {
       const t = i / ctx.sampleRate;
       const beatPos = t * (bpm / 60);
-      const beat = beatPos % 4;
+      const beatInBar = beatPos % 4;
+      const sixteenth = Math.floor((beatPos % 1) * 4) % 8;
+      
       // Kick
-      if (beat < 0.12 && (Math.floor(beatPos) % 2 === 0)) {
-        data[i] += Math.sin(2 * Math.PI * 60 * t) * Math.exp(-t * 20) * 0.3;
+      if (pat.kick[sixteenth]) {
+        if (beatInBar < 0.15 && Math.floor(beatPos) % 2 === 0) {
+          const env = Math.exp(-t * (beatPos > 0 ? 25 : 5));
+          data[i] += Math.sin(2 * Math.PI * (60 - (t % (60/bpm)) * 200) * t) * env * 0.4;
+        }
       }
       // Snare
-      if (beat > 0.85 && beat < 1.15 && Math.floor(beatPos) % 2 === 1) {
-        data[i] += (Math.random() * 2 - 1) * Math.exp(-t * 25) * 0.25;
+      if (pat.snare[sixteenth] && beatInBar > 0.85 && beatInBar < 1.1) {
+        const env = Math.exp(-(t % (60/bpm)) * 35);
+        data[i] += (Math.random() * 2 - 1) * env * 0.3;
       }
       // Hi-hat
-      if (beat % 0.5 < 0.04) {
-        data[i] += (Math.random() * 2 - 1) * Math.exp(-t * 60) * 0.1;
+      if (pat.hat[sixteenth]) {
+        const env = Math.exp(-(t % (60/bpm)) * 100);
+        data[i] += (Math.random() * 2 - 1) * env * 0.1;
       }
-      // Simple bassline
-      data[i] += Math.sin(2 * Math.PI * 55 * t) * 0.08;
+      // Sub bass on beats 0, 2
+      if (beatInBar < 0.5 && Math.floor(beatPos) % 2 === 0) {
+        data[i] += Math.sin(2 * Math.PI * 55 * t) * Math.exp(-t * 5) * 0.12;
+      }
     }
   }
   
   const wav = audioBufferToWav(buffer);
-  downloadBlob(wav, `flstudio_export_${bpm}bpm_${bars}bars.wav`, 'audio/wav');
-  document.getElementById('exportOutput').textContent = `WAV exported: ${bpm}BPM ${bars} bars`;
+  downloadBlob(wav, `flstudio_${style}_${bpm}bpm_${bars}bars.wav`, 'audio/wav');
+  document.getElementById('exportOutput').textContent = `WAV exported: ${style} ${bpm}BPM ${bars} bars`;
 }
 
 function exportMp3() {
@@ -1698,7 +1869,7 @@ function renderPianoRoll() {
 // MIDI Generation
 const scaleOffsets = {
   major:[0,2,4,5,7,9,11], minor:[0,2,3,5,7,8,10], dorian:[0,2,3,5,7,9,10],
-  mixolydian:[0,2,4,5,7,9,10], pentatonic:[0,2,5,7,10], blues:[0,3,5,6,7,10]
+  phrygian:[1,3,5,7,8,10,11], mixolydian:[0,2,4,5,7,9,10], pentatonic:[0,2,5,7,10], blues:[0,3,5,6,7,10]
 };
 const chordOffsets = {
   min:[0,3,7], maj:[0,4,7], min7:[0,3,7,10], maj7:[0,4,7,11], dom7:[0,4,7,10], sus4:[0,5,7], dim:[0,3,6], aug:[0,4,8]
@@ -1757,32 +1928,36 @@ function createMidiBlob(bpm, bars, style, scaleNotes, chordNotes) {
   const track0Len = track0Events.length;
   const track0 = [0x4D,0x54,0x72,0x6B, (track0Len >> 24) & 0xFF, (track0Len >> 16) & 0xFF, (track0Len >> 8) & 0xFF, track0Len & 0xFF, ...track0Events];
   
-  // Drum track
+  // Drum track — absolute tick counting for correct delta timing
   let drumEvents = [];
   let tick = 0;
-  const sub = Math.round(ticksPerBeat / 4);
+  const q = ticksPerBeat; // ticks per quarter note
+  const sub = Math.round(q / 8); // 32nd note
   for (let bar = 0; bar < bars; bar++) {
     for (let beat = 0; beat < 4; beat++) {
-      const isKickBeat = (beat === 0 || beat === 2);
-      const isSnareBeat = (beat === 1 || beat === 3);
-      if (isKickBeat) {
-        drumEvents.push(...writeMidiEvent(tick, 0x90, 36, 100));
-        drumEvents.push(...writeMidiEvent(sub, 0x80, 36, 0));
-        tick = sub;
-      } else {
-        tick += sub;
+      // Each beat = q ticks, subdivided into 8 slots of sub ticks each
+      let absTick = (bar * 4 + beat) * q;
+      
+      // Kick on +0 and +q/2 (beats 0 and 2)
+      if (beat === 0 || beat === 2) {
+        drumEvents.push(...writeMidiEvent(absTick - tick, 0x90, 36, 100));
+        drumEvents.push(...writeMidiEvent(sub * 2, 0x80, 36, 0));
+        tick = absTick + sub * 2;
       }
-      if (isSnareBeat) {
-        drumEvents.push(...writeMidiEvent(tick, 0x90, 38, 90));
-        drumEvents.push(...writeMidiEvent(sub, 0x80, 38, 0));
-        tick = sub;
-      } else {
-        tick += sub;
+      
+      // Snare on +q/2 and +3q/2 (beats 1 and 3)
+      if (beat === 1 || beat === 3) {
+        drumEvents.push(...writeMidiEvent(absTick + q/2 - tick, 0x90, 38, 90));
+        drumEvents.push(...writeMidiEvent(sub * 2, 0x80, 38, 0));
+        tick = absTick + q/2 + sub * 2;
       }
-      for (let h = 0; h < 2; h++) {
-        drumEvents.push(...writeMidiEvent(tick, 0x90, 42, 70));
-        drumEvents.push(...writeMidiEvent(Math.round(ticksPerBeat / 8), 0x80, 42, 0));
-        tick = 0;
+      
+      // Hi-hat on every 16th note (4 per beat)
+      for (let h = 0; h < 4; h++) {
+        const hhTick = absTick + h * sub;
+        drumEvents.push(...writeMidiEvent(hhTick - tick, 0x90, 42, 70));
+        drumEvents.push(...writeMidiEvent(sub - 1, 0x80, 42, 0));
+        tick = hhTick + sub - 1;
       }
     }
   }
@@ -1885,25 +2060,24 @@ async function testApiConnection() {
   document.getElementById('apiTestResult').style.color = '#ff4444';
 }
 
-// Connection test on load
-document.addEventListener('DOMContentLoaded', () => {
-  refreshPresetList();
-  renderPianoRoll();
-  setTimeout(() => {
-    testApiConnection();
-    testLlmConnection();
-  }, 500);
-});
+// Visual feedback for key presses
+function flashNowPlaying(label) {
+  const el = document.getElementById('nowPlaying');
+  el.textContent = label;
+  el.style.transition = 'none';
+  el.style.opacity = '0.3';
+  requestAnimationFrame(() => { el.style.transition = 'opacity 0.15s'; el.style.opacity = '1'; });
+}
 
 // KEYBOARD SHORTCUTS
 document.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
   switch(e.code) {
-    case 'Space': e.preventDefault(); const a = document.querySelector('.panel.active'); if (a) { const playing = document.getElementById('nowPlaying').textContent; if (playing && playing !== '—') stopAllAudio(); else generateBeat(); } break;
-    case 'KeyG': generateBeat(); break;
-    case 'KeyS': stopAllAudio(); break;
-    case 'KeyM': generateMidiFile(); renderPianoRoll(); break;
-    case 'KeyT': tapTempo(); break;
+    case 'Space': e.preventDefault(); const playing = document.getElementById('nowPlaying').textContent; if (playing && playing !== '—') { stopAllAudio(); flashNowPlaying('STOPPED'); } else { generateBeat(); flashNowPlaying('PLAY'); } break;
+    case 'KeyG': generateBeat(); flashNowPlaying('GENERATE'); break;
+    case 'KeyS': stopAllAudio(); flashNowPlaying('STOPPED'); break;
+    case 'KeyM': generateMidiFile(); renderPianoRoll(); flashNowPlaying('MIDI'); break;
+    case 'KeyT': tapTempo(); flashNowPlaying('TAP'); break;
     case 'Digit1': playDrumSound('kick'); break;
     case 'Digit2': playDrumSound('snare'); break;
     case 'Digit3': playDrumSound('hihat'); break;
@@ -1938,8 +2112,8 @@ function startRecording() {
   if (!audioContext) { document.getElementById('exportOutput').textContent = 'No audio context. Play something first.'; return; }
   const dest = audioContext.createMediaStreamDestination();
   const stream = dest.stream;
-  // Tap into master chain
-  if (masterGain) masterGain.connect(dest);
+  // Tap after analyser to capture full processed audio
+  if (analyserNode) analyserNode.connect(dest);
   mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
   recordedChunks = [];
   mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
@@ -1947,7 +2121,7 @@ function startRecording() {
     const blob = new Blob(recordedChunks, { type: 'audio/webm' });
     downloadBlob(blob, `session_recording_${Date.now()}.webm`, 'audio/webm');
     document.getElementById('exportOutput').textContent = 'Session recorded and downloaded!';
-    if (masterGain) masterGain.disconnect(dest);
+    if (analyserNode) analyserNode.disconnect(dest);
   };
   mediaRecorder.start();
   document.getElementById('exportOutput').textContent = 'Recording... Click Stop when done.';
@@ -1971,6 +2145,19 @@ function switchTab(name, el) {
 document.addEventListener('DOMContentLoaded', () => {
   refreshPresetList();
   renderPianoRoll();
+  
+  // Auto-update piano roll on control changes
+  ['beatStyle','beatKey','beatScale','beatTempo','beatBars'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', renderPianoRoll);
+    if (el && el.type === 'range') el.addEventListener('input', renderPianoRoll);
+  });
+  
+  // Resume AudioContext on first click anywhere
+  document.addEventListener('click', () => {
+    if (audioContext && audioContext.state === 'suspended') audioContext.resume();
+  }, { once: true });
+  
   setTimeout(() => {
     testApiConnection();
     testLlmConnection();
